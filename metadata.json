@@ -1,0 +1,6 @@
+{
+  "name": "CyberSnake - Neon Yılan Oyunu",
+  "description": "3 can hakkı, özel güçlendiriciler, dinamik ses efektleri ve high score liderlik tablosu içeren estetik neon siberpunk yılan oyunu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
