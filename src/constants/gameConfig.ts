@@ -1,4 +1,4 @@
-import { Difficulty, DifficultyConfig, FoodType } from '../types/game';
+import { Difficulty, DifficultyConfig, FoodType, MarketPowerConfig, MarketPowerId } from '../types/game';
 
 // Arena & Physics Dimensions for Snake.io
 export const ARENA_SIZE = 2600; // 2600x2600 px expansive arena
@@ -415,5 +415,76 @@ export const SNAKE_SKINS = {
     bodyColor1: '#f97316',
     bodyColor2: '#dc2626',
     glowColor: 'rgba(249, 115, 22, 0.8)',
+  },
+};
+
+export const MARKET_ROTATION_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+export const MARKET_POWERS: Record<MarketPowerId, MarketPowerConfig> = {
+  MYTHIC_CLONING: {
+    id: 'MYTHIC_CLONING',
+    name: 'Mitolojik Klonlama (3 Klon)',
+    rarity: 'MYTHIC',
+    chancePercent: 0.01,
+    chanceLabel: '%0.01',
+    price: 200000,
+    description: 'Arenada yanınızda 3 sadık klon yılan çıkarır! Hem çoklu hem tek oyunculuda çalışır. Klonlar ölünce içinden hiçbir şey çıkmaz.',
+    badgeLabel: 'Mitolojik Güç',
+    tagColor: 'from-purple-600 via-pink-600 to-rose-600',
+  },
+  TIME_FREEZE: {
+    id: 'TIME_FREEZE',
+    name: 'Zaman Durdurma (10 Saniye)',
+    rarity: 'LEGENDARY',
+    chancePercent: 0.1,
+    chanceLabel: '%0.1',
+    price: 10000,
+    description: '10 saniyeliğine arenadaki tüm botları kaskatı dondurur. [G] tuşu ile kullanılır. 150sn bekleme süresi.',
+    badgeLabel: 'Efsanevi Güç',
+    tagColor: 'from-cyan-400 via-sky-500 to-blue-600',
+  },
+  SUPER_TURBO: {
+    id: 'SUPER_TURBO',
+    name: 'Süper Turbo Sprint',
+    rarity: 'LEGENDARY',
+    chancePercent: 0.1,
+    chanceLabel: '%0.1',
+    price: 5000,
+    description: 'Efsanevi turbo sprint: Stamina %70 daha yavaş tükenir, 2 kat hızlı dolar ve neon altın arkasında hız izi bırakır!',
+    badgeLabel: 'Efsanevi Güç',
+    tagColor: 'from-amber-400 via-orange-500 to-yellow-600',
+  },
+  MEGA_LAHMACUN: {
+    id: 'MEGA_LAHMACUN',
+    name: 'Mega Lahmacun Ziyafeti',
+    rarity: 'EPIC',
+    chancePercent: 30.0,
+    chanceLabel: '%30.0',
+    price: 350,
+    description: 'Arenada bonus dev lahmacunlar çıkarır ve her yenen yemekte ekstra +%15 kitle uzaması kazandırır.',
+    badgeLabel: 'Epik Güç',
+    tagColor: 'from-purple-500 to-indigo-600',
+  },
+  MAGNET_VORTEX: {
+    id: 'MAGNET_VORTEX',
+    name: 'Mıknatıs Girdabı',
+    rarity: 'RARE',
+    chancePercent: 34.9,
+    chanceLabel: '%34.9',
+    price: 500,
+    description: 'Kalıcı manyetik çekim alanı: Sahadaki tüm parıltılı enerji kürelerini otomatik olarak yılanınıza doğru çeker.',
+    badgeLabel: 'Nadir Güç',
+    tagColor: 'from-emerald-400 to-teal-500',
+  },
+  CYBER_SHIELD: {
+    id: 'CYBER_SHIELD',
+    name: 'Siber Kalkan Zırhı',
+    rarity: 'RARE',
+    chancePercent: 35.0,
+    chanceLabel: '%35.0',
+    price: 750,
+    description: 'Kalıcı koruma zırhı: Zehirli baloncuklardan gelen hasarları %50 soğurur ve canınızı korur.',
+    badgeLabel: 'Nadir Güç',
+    tagColor: 'from-teal-400 to-cyan-500',
   },
 };

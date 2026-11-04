@@ -153,6 +153,31 @@ export function useSnakeGame() {
     return ['SKIN_DEFAULT'];
   });
 
+  // Tactical Market Items persistent state (One-time purchases)
+  const [hasMegaLahmacun, setHasMegaLahmacun] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cybersnake_item_mega_lahmacun') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [hasMagnetVortex, setHasMagnetVortex] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cybersnake_item_magnet_vortex') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [hasCyberShield, setHasCyberShield] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cybersnake_item_cyber_shield') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   // Multiplayer Game Mode State
   const [gameMode, setGameMode] = useState<GameMode>('MULTIPLAYER');
   const [roomId, setRoomId] = useState<string>('GLOBAL');
@@ -217,6 +242,40 @@ export function useSnakeGame() {
     });
   }, []);
 
+  // Add particles directly into engine state
+  const addEngineParticles = useCallback((x: number, y: number, color: string, count: number = 16) => {
+    const arr: Particle[] = [];
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 40 + Math.random() * 120;
+      arr.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color,
+        size: 3 + Math.random() * 4,
+        alpha: 1,
+        life: 0,
+        maxLife: 0.35 + Math.random() * 0.25,
+      });
+    }
+    engineRef.current.particles.push(...arr);
+  }, []);
+
+  // Add floating text
+  const addEngineFloatingText = useCallback((x: number, y: number, text: string, color: string = '#00e5ff') => {
+    engineRef.current.floatingTexts.push({
+      id: `ft-${Date.now()}-${Math.random()}`,
+      x,
+      y,
+      text,
+      color,
+      alpha: 1,
+      life: 0,
+    });
+  }, []);
+
   // Buy upgrade logic
   const buyUpgrade = useCallback(
     (type: keyof UpgradeLevels): boolean => {
@@ -229,7 +288,15 @@ export function useSnakeGame() {
 
       const currentLvl = upgrades[type];
       const costArr = COSTS[type];
-      if (currentLvl >= costArr.length) return false;
+      if (currentLvl >= costArr.length) {
+        addEngineFloatingText(
+          engineRef.current.playerX,
+          engineRef.current.playerY - 30,
+          '⚠️ Zaten satın aldınız!',
+          '#f59e0b'
+        );
+        return false;
+      }
 
       const cost = costArr[currentLvl];
       if (coins < cost) return false;
@@ -253,7 +320,57 @@ export function useSnakeGame() {
 
       return true;
     },
-    [coins, upgrades, maxPossibleLives, updateCoins]
+    [coins, upgrades, maxPossibleLives, updateCoins, addEngineFloatingText]
+  );
+
+  // Buy tactical one-time market items (Mega Lahmacun, Mıknatıs, Siber Kalkan)
+  const buyTacticalItem = useCallback(
+    (itemId: 'MEGA_LAHMACUN' | 'MAGNET_VORTEX' | 'CYBER_SHIELD'): boolean => {
+      if (itemId === 'MEGA_LAHMACUN') {
+        if (hasMegaLahmacun) {
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#f59e0b');
+          return false;
+        }
+        if (coins < 350) return false;
+        updateCoins(-350);
+        sound.playGoldenApple();
+        setHasMegaLahmacun(true);
+        try { localStorage.setItem('cybersnake_item_mega_lahmacun', 'true'); } catch {}
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🍕 MEGA LAHMACUN ZİYAFETİ ALINDI!', '#ea580c');
+        return true;
+      }
+
+      if (itemId === 'MAGNET_VORTEX') {
+        if (hasMagnetVortex) {
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#f59e0b');
+          return false;
+        }
+        if (coins < 500) return false;
+        updateCoins(-500);
+        sound.playGoldenApple();
+        setHasMagnetVortex(true);
+        try { localStorage.setItem('cybersnake_item_magnet_vortex', 'true'); } catch {}
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🧲 MIKNATIS GİRDABI ALINDI!', '#f43f5e');
+        return true;
+      }
+
+      if (itemId === 'CYBER_SHIELD') {
+        if (hasCyberShield) {
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#f59e0b');
+          return false;
+        }
+        if (coins < 750) return false;
+        updateCoins(-750);
+        sound.playPowerUp();
+        setHasCyberShield(true);
+        try { localStorage.setItem('cybersnake_item_cyber_shield', 'true'); } catch {}
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🛡️ SİBER KALKAN ALINDI!', '#14b8a6');
+        return true;
+      }
+
+      return false;
+    },
+    [coins, hasMegaLahmacun, hasMagnetVortex, hasCyberShield, updateCoins, addEngineFloatingText]
   );
 
   // Helper to spawn random point in circular arena
@@ -305,40 +422,6 @@ export function useSnakeGame() {
     },
     [difficulty]
   );
-
-  // Add particles directly into engine state
-  const addEngineParticles = useCallback((x: number, y: number, color: string, count: number = 16) => {
-    const arr: Particle[] = [];
-    for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 40 + Math.random() * 120;
-      arr.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        color,
-        size: 3 + Math.random() * 4,
-        alpha: 1,
-        life: 0,
-        maxLife: 0.35 + Math.random() * 0.25,
-      });
-    }
-    engineRef.current.particles.push(...arr);
-  }, []);
-
-  // Add floating text
-  const addEngineFloatingText = useCallback((x: number, y: number, text: string, color: string = '#00e5ff') => {
-    engineRef.current.floatingTexts.push({
-      id: `ft-${Date.now()}-${Math.random()}`,
-      x,
-      y,
-      text,
-      color,
-      alpha: 1,
-      life: 0,
-    });
-  }, []);
 
   // 10,000 Coin Time Freeze purchase (single purchase limit as requested)
   const buyTimeFreeze = useCallback((): boolean => {
@@ -431,12 +514,18 @@ export function useSnakeGame() {
     const skin = SNAKE_SKINS[skinId];
     if (!skin) return false;
     if (unlockedSkins.includes(skinId)) {
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        '⚠️ Zaten satın aldınız!',
+        '#f59e0b'
+      );
       setSelectedSkin(skinId);
       engineRef.current.selectedSkin = skinId;
       try {
         localStorage.setItem('cybersnake_selected_skin', skinId);
       } catch {}
-      return true;
+      return false;
     }
 
     if (coins < skin.price) return false;
@@ -867,7 +956,23 @@ export function useSnakeGame() {
           });
         }
 
-        // 2. Player Food Collisions
+        // 2. Tactical Magnetic Suction (If Mıknatıs Girdabı is owned or power-up active)
+        const hasActiveMagnet = hasMagnetVortex || eng.activePowerUps.some((p) => p.type === 'MAGNET');
+        if (hasActiveMagnet) {
+          const magnetRadius = hasMagnetVortex && eng.activePowerUps.some((p) => p.type === 'MAGNET') ? 220 : hasMagnetVortex ? 120 : 160;
+          for (let m = 0; m < eng.foods.length; m++) {
+            const food = eng.foods[m];
+            if (food.type === 'GREEN_POISON' || food.type === 'PURPLE_POISON') continue;
+            const d = Math.hypot(eng.playerX - food.x, eng.playerY - food.y);
+            if (d < magnetRadius && d > 12) {
+              const pull = ((magnetRadius - d) / magnetRadius) * 280 * dt;
+              food.x += ((eng.playerX - food.x) / d) * pull;
+              food.y += ((eng.playerY - food.y) / d) * pull;
+            }
+          }
+        }
+
+        // 3. Player Food Collisions
         for (let i = eng.foods.length - 1; i >= 0; i--) {
           const f = eng.foods[i];
           const dist = Math.hypot(eng.playerX - f.x, eng.playerY - f.y);
@@ -884,6 +989,8 @@ export function useSnakeGame() {
               if (upgrades.agilityLevel === 1) damage *= 0.8;
               else if (upgrades.agilityLevel === 2) damage *= 0.5;
               else if (upgrades.agilityLevel >= 3) damage *= 0.3;
+
+              if (hasCyberShield) damage *= 0.5; // Siber Kalkan reduces poison damage by 50%!
 
               damage = Number(damage.toFixed(2));
               eng.lives = Math.max(0, Number((eng.lives - damage).toFixed(2)));
@@ -1613,6 +1720,10 @@ export function useSnakeGame() {
     activateTimeFreeze,
     buySkin,
     equipSkin,
+    hasMegaLahmacun,
+    hasMagnetVortex,
+    hasCyberShield,
+    buyTacticalItem,
     submitHighScore,
     setIsLeaderboardOpen,
     setIsUpgradeModalOpen,

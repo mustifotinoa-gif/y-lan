@@ -161,4 +161,37 @@ export interface LiveStandingItem {
 
 export type GameMode = 'SOLO' | 'MULTIPLAYER';
 
+export type MarketRarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC';
+
+export type MarketPowerId =
+  | 'TIME_FREEZE'
+  | 'SUPER_TURBO'
+  | 'MEGA_LAHMACUN'
+  | 'MAGNET_VORTEX'
+  | 'CYBER_SHIELD'
+  | 'MYTHIC_CLONING';
+
+export interface MarketPowerConfig {
+  id: MarketPowerId;
+  name: string;
+  rarity: MarketRarity;
+  chancePercent: number;
+  chanceLabel: string;
+  price: number;
+  description: string;
+  badgeLabel: string;
+  tagColor: string;
+}
+
+export interface CloneSnake {
+  id: string;
+  name: string;
+  body: Point[];
+  angle: number;
+  isAlive: boolean;
+  length: number;
+  offsetAngle: number;
+  offsetDist: number;
+}
+
 

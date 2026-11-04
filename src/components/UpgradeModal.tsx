@@ -31,6 +31,10 @@ interface UpgradeModalProps {
   unlockedSkins?: SnakeSkinId[];
   onBuySkin?: (skinId: SnakeSkinId) => boolean;
   onEquipSkin?: (skinId: SnakeSkinId) => void;
+  hasMegaLahmacun?: boolean;
+  hasMagnetVortex?: boolean;
+  hasCyberShield?: boolean;
+  onBuyTacticalItem?: (itemId: 'MEGA_LAHMACUN' | 'MAGNET_VORTEX' | 'CYBER_SHIELD') => boolean;
 }
 
 type MarketTab = 'powers' | 'upgrades' | 'skins';
@@ -47,6 +51,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   unlockedSkins = ['SKIN_DEFAULT'],
   onBuySkin,
   onEquipSkin,
+  hasMegaLahmacun = false,
+  hasMagnetVortex = false,
+  hasCyberShield = false,
+  onBuyTacticalItem,
 }) => {
   const [activeTab, setActiveTab] = useState<MarketTab>('powers');
 
@@ -286,57 +294,153 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
               {/* Extra Market Consumables / Tactical items */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Mega Lahmacun */}
                 <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between gap-3">
                   <div className="flex items-start gap-2.5">
                     <div className="p-2 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
                       <Coins className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-white">Mega Lahmacun Ziyafeti</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Arenada hemen yanınızda 3 dev lahmacun ve +200 kitle yaratır.
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-xs text-white">Mega Lahmacun Ziyafeti</h4>
+                        {hasMegaLahmacun && (
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-mono font-bold">
+                            Aktif
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                        Arenada bonus lahmacunlar yaratır ve her yemekte +%15 ekstra uzama kazandırır.
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                    <span className="text-xs font-mono font-bold text-amber-300">350 Coin</span>
-                    <span className="text-[10px] text-slate-500 font-mono">Otomatik Sahada</span>
+                  <div className="pt-2 border-t border-slate-800/80">
+                    {hasMegaLahmacun ? (
+                      <div className="w-full py-2 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm">
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span>Zaten satın aldınız!</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 text-xs font-mono font-bold text-amber-300">
+                          <Coins className="w-3.5 h-3.5 text-amber-400" />
+                          <span>350 Coin</span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={coins < 350}
+                          onClick={() => onBuyTacticalItem && onBuyTacticalItem('MEGA_LAHMACUN')}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                            coins >= 350
+                              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20 active:scale-95'
+                              : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                          }`}
+                        >
+                          <span>Satın Al</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {/* Mıknatıs Girdabı */}
                 <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between gap-3">
                   <div className="flex items-start gap-2.5">
                     <div className="p-2 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 shrink-0">
                       <Magnet className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-white">Mıknatıs Girdabı</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Sahadaki küreler doğrudan yılanınıza doğru uçar.
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-xs text-white">Mıknatıs Girdabı</h4>
+                        {hasMagnetVortex && (
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-mono font-bold">
+                            Aktif
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                        Kalıcı manyetik çekim alanı: Sahadaki tüm küreleri doğrudan yılanınıza doğru çeker.
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                    <span className="text-xs font-mono font-bold text-amber-300">500 Coin</span>
-                    <span className="text-[10px] text-slate-500 font-mono">Otomatik Sahada</span>
+                  <div className="pt-2 border-t border-slate-800/80">
+                    {hasMagnetVortex ? (
+                      <div className="w-full py-2 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm">
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span>Zaten satın aldınız!</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 text-xs font-mono font-bold text-amber-300">
+                          <Coins className="w-3.5 h-3.5 text-amber-400" />
+                          <span>500 Coin</span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={coins < 500}
+                          onClick={() => onBuyTacticalItem && onBuyTacticalItem('MAGNET_VORTEX')}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                            coins >= 500
+                              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20 active:scale-95'
+                              : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                          }`}
+                        >
+                          <span>Satın Al</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {/* Siber Kalkan */}
                 <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between gap-3">
                   <div className="flex items-start gap-2.5">
                     <div className="p-2 rounded-lg bg-teal-500/15 border border-teal-500/30 text-teal-400 shrink-0">
                       <ShieldCheck className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-white">Siber Kalkan</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Tüm zehirli baloncuklara ve bot darbelerine karşı tam koruma.
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-xs text-white">Siber Kalkan</h4>
+                        {hasCyberShield && (
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-mono font-bold">
+                            Aktif
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                        Kalıcı koruma zırhı: Zehir hasarlarını %50 soğurur ve canınızı korur.
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                    <span className="text-xs font-mono font-bold text-amber-300">750 Coin</span>
-                    <span className="text-[10px] text-slate-500 font-mono">Otomatik Sahada</span>
+                  <div className="pt-2 border-t border-slate-800/80">
+                    {hasCyberShield ? (
+                      <div className="w-full py-2 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm">
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span>Zaten satın aldınız!</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 text-xs font-mono font-bold text-amber-300">
+                          <Coins className="w-3.5 h-3.5 text-amber-400" />
+                          <span>750 Coin</span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={coins < 750}
+                          onClick={() => onBuyTacticalItem && onBuyTacticalItem('CYBER_SHIELD')}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                            coins >= 750
+                              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20 active:scale-95'
+                              : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                          }`}
+                        >
+                          <span>Satın Al</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -383,9 +487,9 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
                     <div className="shrink-0 self-end sm:self-center">
                       {isMax ? (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
                           <Check className="w-4 h-4 text-emerald-400" />
-                          <span>Maksimum</span>
+                          <span>Zaten satın aldınız!</span>
                         </div>
                       ) : (
                         <button
@@ -474,18 +578,24 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                     {/* Action Button */}
                     <div className="pt-2 border-t border-slate-800/80">
                       {isEquipped ? (
-                        <div className="w-full py-2 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold flex items-center justify-center gap-1.5 border border-cyan-500/30">
-                          <Check className="w-4 h-4" />
-                          <span>Kullanımda</span>
+                        <div className="w-full py-2 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold flex items-center justify-center gap-1.5 border border-cyan-500/30 shadow-sm">
+                          <Check className="w-4 h-4 text-cyan-400" />
+                          <span>Zaten satın aldınız! (Kullanımda)</span>
                         </div>
                       ) : isOwned ? (
-                        <button
-                          type="button"
-                          onClick={() => onEquipSkin && onEquipSkin(skin.id)}
-                          className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                        >
-                          Kuşan
-                        </button>
+                        <div className="flex flex-col gap-1.5 w-full">
+                          <div className="w-full py-1.5 rounded-xl bg-emerald-500/15 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 border border-emerald-500/30">
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Zaten satın aldınız!</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onEquipSkin && onEquipSkin(skin.id)}
+                            className="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all active:scale-95 cursor-pointer border border-slate-700"
+                          >
+                            Kostümü Kuşan
+                          </button>
+                        </div>
                       ) : (
                         <button
                           type="button"

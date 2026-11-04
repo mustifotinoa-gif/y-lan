@@ -69,6 +69,10 @@ export default function App() {
     activateTimeFreeze,
     buySkin,
     equipSkin,
+    hasMegaLahmacun,
+    hasMagnetVortex,
+    hasCyberShield,
+    buyTacticalItem,
     submitHighScore,
     setIsLeaderboardOpen,
     setIsUpgradeModalOpen,
@@ -414,6 +418,10 @@ export default function App() {
         unlockedSkins={unlockedSkins}
         onBuySkin={buySkin}
         onEquipSkin={equipSkin}
+        hasMegaLahmacun={hasMegaLahmacun}
+        hasMagnetVortex={hasMagnetVortex}
+        hasCyberShield={hasCyberShield}
+        onBuyTacticalItem={buyTacticalItem}
       />
 
       {/* Settings Modal (Siyah/Beyaz Tema, 20 Müzik, Rastgele, SFX, 120 FPS) */}
