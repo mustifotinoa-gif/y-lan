@@ -297,7 +297,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       // 5. Draw Bot Snakes (Snake.io Style: Glossy 3D rounded segments + expressive eyes)
       const isFrozen = eng.timeFreezeRemainingMs > 0;
 
-      eng.bots.forEach((bot: any) => {
+      if (!isMultiplayer && eng.bots) eng.bots.forEach((bot: any) => {
         if (!bot.isAlive || bot.body.length === 0) return;
 
         const body = bot.body;
@@ -701,8 +701,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       const rCenterX = rx + radarSize / 2;
       const rCenterY = ry + radarSize / 2;
 
-      // Draw Bot Dots on Radar
-      eng.bots.forEach((bot: any) => {
+      // Draw Bot Dots on Radar (Only in Solo mode, never in Multiplayer)
+      if (!isMultiplayer && eng.bots) eng.bots.forEach((bot: any) => {
         if (!bot.isAlive || bot.body.length === 0) return;
         const bdx = (bot.body[0].x - ARENA_SIZE / 2) * radarScale;
         const bdy = (bot.body[0].y - ARENA_SIZE / 2) * radarScale;
@@ -836,7 +836,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div className="flex items-center justify-between pb-1 mb-0.5 border-b border-slate-800 text-slate-400 font-sans font-bold text-[10px] uppercase tracking-wider">
           <span className="flex items-center gap-1">
             <Crown className="w-3 h-3 text-amber-400" />
-            <span>Liderler</span>
+            <span>{isMultiplayer ? 'Gerçek Oyuncular' : 'Liderler'}</span>
           </span>
           <span className="text-cyan-400 font-mono">#{playerRank}</span>
         </div>

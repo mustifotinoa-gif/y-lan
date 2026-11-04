@@ -535,8 +535,8 @@ export function useSnakeGame() {
         });
       }
 
-      // If multiplayer, fewer bots needed since real humans are present
-      const initialBots = initBots(diff);
+      // In multiplayer mode: ZERO BOTS (sadece gerçek oyuncular). In solo mode: smart bots active.
+      const initialBots = mode === 'MULTIPLAYER' ? [] : initBots(diff);
 
       const initialFoods: FoodItem[] = [];
       for (let i = 0; i < DEFAULT_FOOD_COUNT; i++) {
@@ -1222,18 +1222,20 @@ export function useSnakeGame() {
         });
         }
 
-        // 4. Check if Player's Head hits a Bot's Body (only when not frozen)
+        // 4. Check if Player's Head hits a Bot's Body (only in solo mode when not frozen)
         if (!isTimeFrozen) {
-          eng.bots.forEach((bot) => {
-            if (!bot.isAlive) return;
-            for (let s = 1; s < bot.body.length; s++) {
-              const seg = bot.body[s];
-              if (Math.hypot(eng.playerX - seg.x, eng.playerY - seg.y) < SEGMENT_RADIUS * 1.5) {
-                handlePlayerDamage(`BOT GÖVDESİ (${bot.name})`);
-                break;
+          if (gameMode !== 'MULTIPLAYER') {
+            eng.bots.forEach((bot) => {
+              if (!bot.isAlive) return;
+              for (let s = 1; s < bot.body.length; s++) {
+                const seg = bot.body[s];
+                if (Math.hypot(eng.playerX - seg.x, eng.playerY - seg.y) < SEGMENT_RADIUS * 1.5) {
+                  handlePlayerDamage(`BOT GÖVDESİ (${bot.name})`);
+                  break;
+                }
               }
-            }
-          });
+            });
+          }
 
           // 4b. Check if Player's Head hits a Remote Human Player's Body
           if (gameMode === 'MULTIPLAYER') {
@@ -1319,30 +1321,32 @@ export function useSnakeGame() {
           eng.durationSeconds += 1;
           setDurationSeconds(eng.durationSeconds);
 
-          // Bot Respawns
-          eng.bots.forEach((bot) => {
-            if (bot.isAlive) return;
-            if (bot.respawnInSeconds > 1) {
-              bot.respawnInSeconds -= 1;
-            } else {
-              const p = getRandomArenaPoint(300);
-              const angle = Math.random() * Math.PI * 2;
-              const respawnBody: Point[] = [];
-              const startLen = 14;
-              for (let i = 0; i < startLen; i++) {
-                respawnBody.push({
-                  x: p.x - Math.cos(angle) * i * SEGMENT_SPACING,
-                  y: p.y - Math.sin(angle) * i * SEGMENT_SPACING,
-                });
+          // Bot Respawns (Only in Solo mode, never in Multiplayer)
+          if (gameMode !== 'MULTIPLAYER') {
+            eng.bots.forEach((bot) => {
+              if (bot.isAlive) return;
+              if (bot.respawnInSeconds > 1) {
+                bot.respawnInSeconds -= 1;
+              } else {
+                const p = getRandomArenaPoint(300);
+                const angle = Math.random() * Math.PI * 2;
+                const respawnBody: Point[] = [];
+                const startLen = 14;
+                for (let i = 0; i < startLen; i++) {
+                  respawnBody.push({
+                    x: p.x - Math.cos(angle) * i * SEGMENT_SPACING,
+                    y: p.y - Math.sin(angle) * i * SEGMENT_SPACING,
+                  });
+                }
+                bot.isAlive = true;
+                bot.body = respawnBody;
+                bot.angle = angle;
+                bot.targetAngle = angle;
+                bot.length = startLen;
+                bot.respawnInSeconds = 0;
               }
-              bot.isAlive = true;
-              bot.body = respawnBody;
-              bot.angle = angle;
-              bot.targetAngle = angle;
-              bot.length = startLen;
-              bot.respawnInSeconds = 0;
-            }
-          });
+            });
+          }
 
           // Power-up durations
           eng.activePowerUps = eng.activePowerUps
@@ -1374,6 +1378,18 @@ export function useSnakeGame() {
           length: rp.length,
         }));
 
+        const botStandings: LiveStandingItem[] = gameMode === 'MULTIPLAYER'
+          ? []
+          : eng.bots.map((b) => ({
+              name: b.name,
+              score: b.score,
+              color: b.color,
+              isPlayer: false,
+              isRealHuman: false,
+              isAlive: b.isAlive,
+              length: b.length,
+            }));
+
         const standings: LiveStandingItem[] = [
           {
             name: playerName ? `${playerName} (Sen)` : 'Sen',
@@ -1385,15 +1401,7 @@ export function useSnakeGame() {
             length: eng.playerLength,
           },
           ...remoteStandings,
-          ...eng.bots.map((b) => ({
-            name: b.name,
-            score: b.score,
-            color: b.color,
-            isPlayer: false,
-            isRealHuman: false,
-            isAlive: b.isAlive,
-            length: b.length,
-          })),
+          ...botStandings,
         ].sort((a, b) => b.score - a.score);
 
         setLiveStandings(standings);

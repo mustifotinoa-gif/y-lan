@@ -175,7 +175,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
                     </div>
                     <div>
                       <h3 className="font-extrabold text-sm text-white">Çok Oyunculu</h3>
-                      <p className="text-[10px] text-emerald-300 font-mono font-semibold">Gerçek İnsanlarla Oyna</p>
+                      <p className="text-[10px] text-emerald-300 font-mono font-semibold">Sıfır Bot · Yalnızca Gerçek İnsanlar</p>
                     </div>
                   </div>
                   <span className="flex h-2.5 w-2.5 relative">
@@ -184,7 +184,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-2 leading-snug">
-                  Diğer canlı oyuncularla aynı arenada yarışın, birbirinizi avlayın ve sohbet edin.
+                  Bot olmadan yalnızca gerçek insan oyuncularla aynı arenada yarışın, kapışın ve sohbet edin.
                 </p>
               </button>
 
@@ -314,12 +314,23 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
               })}
             </div>
 
-            {/* Active AI Intelligence Banner */}
+            {/* Active AI Intelligence Banner (Solo) vs Zero Bot Alert (Multiplayer) */}
             <div className="mt-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] flex items-center justify-between">
-              <span className="text-slate-400">Aktif Bot Zekası:</span>
-              <span className="text-cyan-300 font-bold font-mono">
-                🧠 {DIFFICULTIES[selectedDifficulty].aiIntelligenceLabel}
-              </span>
+              {localMode === 'MULTIPLAYER' ? (
+                <>
+                  <span className="text-emerald-400 font-semibold">🛡️ Çok Oyunculu Kuralı:</span>
+                  <span className="text-emerald-300 font-bold font-mono">
+                    Sıfır Bot · Sadece Gerçek İnsanlar
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-slate-400">Aktif Bot Zekası:</span>
+                  <span className="text-cyan-300 font-bold font-mono">
+                    🧠 {DIFFICULTIES[selectedDifficulty].aiIntelligenceLabel}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
