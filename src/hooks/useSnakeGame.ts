@@ -122,9 +122,9 @@ export function useSnakeGame() {
   const [timeFreezeCharges, setTimeFreezeCharges] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('cybersnake_time_freeze_charges');
-      return saved ? Number(saved) : 1; // 1 free charge to enjoy!
+      return saved ? Number(saved) : 0; // 0 initial charges - must be bought in market for 10.000 coins
     } catch {
-      return 1;
+      return 0;
     }
   });
 
@@ -428,18 +428,6 @@ export function useSnakeGame() {
       localStorage.setItem('cybersnake_selected_skin', skinId);
     } catch {}
   }, [unlockedSkins]);
-
-  // Gift coins helper (to easily test the 10,000 coin Time Freeze)
-  const addGiftCoins = useCallback((amount: number = 10000) => {
-    updateCoins(amount);
-    sound.playPowerUp();
-    addEngineFloatingText(
-      engineRef.current.playerX,
-      engineRef.current.playerY - 30,
-      `🎁 +${amount.toLocaleString('tr-TR')} COIN HEDİYE!`,
-      '#fbbf24'
-    );
-  }, [updateCoins, addEngineFloatingText]);
 
   // Initialize Bots
   const initBots = useCallback((diff: Difficulty): BotSnake[] => {
@@ -1580,7 +1568,6 @@ export function useSnakeGame() {
     activateTimeFreeze,
     buySkin,
     equipSkin,
-    addGiftCoins,
     submitHighScore,
     setIsLeaderboardOpen,
     setIsUpgradeModalOpen,

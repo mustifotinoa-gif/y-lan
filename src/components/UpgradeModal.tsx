@@ -11,7 +11,6 @@ import {
   Hourglass,
   Palette,
   ShoppingBag,
-  Gift,
   Flame,
   Magnet,
   ShieldCheck,
@@ -32,7 +31,6 @@ interface UpgradeModalProps {
   unlockedSkins?: SnakeSkinId[];
   onBuySkin?: (skinId: SnakeSkinId) => boolean;
   onEquipSkin?: (skinId: SnakeSkinId) => void;
-  onAddGiftCoins?: (amount: number) => void;
 }
 
 type MarketTab = 'powers' | 'upgrades' | 'skins';
@@ -49,20 +47,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   unlockedSkins = ['SKIN_DEFAULT'],
   onBuySkin,
   onEquipSkin,
-  onAddGiftCoins,
 }) => {
   const [activeTab, setActiveTab] = useState<MarketTab>('powers');
-  const [giftFeedback, setGiftFeedback] = useState<string | null>(null);
 
   if (!isOpen) return null;
-
-  const handleClaimGift = () => {
-    if (onAddGiftCoins) {
-      onAddGiftCoins(10000);
-      setGiftFeedback('+10.000 Coin Hesabınıza Eklendi!');
-      setTimeout(() => setGiftFeedback(null), 2500);
-    }
-  };
 
   const UPGRADE_DATA = [
     {
@@ -152,19 +140,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             </div>
           </div>
 
-          {/* Right Header: Coins & Gift Button & Close */}
+          {/* Right Header: Coins & Close */}
           <div className="flex items-center gap-2">
-            {/* Gift Coins Button */}
-            <button
-              onClick={handleClaimGift}
-              title="Test ve Hızlı Deneme İçin +10.000 Hediye Coin Al"
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
-            >
-              <Gift className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
-              <span className="hidden xs:inline">+10.000</span>
-              <span className="xs:hidden">+10K</span>
-            </button>
-
             {/* Current Coins Badge */}
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold text-xs">
               <Coins className="w-4 h-4 text-amber-400" />
@@ -180,14 +157,6 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Gift Claimed Toast Notification */}
-        {giftFeedback && (
-          <div className="px-4 py-1.5 bg-emerald-500/20 border-b border-emerald-500/40 text-emerald-300 text-xs font-bold text-center flex items-center justify-center gap-2 animate-fade-in">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span>{giftFeedback}</span>
-          </div>
-        )}
 
         {/* Tab Navigation */}
         <div className="flex items-center border-b border-slate-800 bg-slate-950/50 px-3 sm:px-6 pt-2 gap-2 shrink-0 overflow-x-auto">
@@ -290,7 +259,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                     </button>
                     {coins < 10000 && (
                       <span className="text-[10px] text-amber-400 font-mono text-center sm:text-right w-full">
-                        Yetersiz bakiye! (Yukarıdaki 🎁 +10.000 butonundan anında alabilirsiniz)
+                        Yetersiz bakiye! Arenada yemek toplayarak ve düşmanları avlayarak 10.000 coin biriktirin.
                       </span>
                     )}
                   </div>

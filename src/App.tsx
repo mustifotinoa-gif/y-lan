@@ -68,7 +68,6 @@ export default function App() {
     activateTimeFreeze,
     buySkin,
     equipSkin,
-    addGiftCoins,
     submitHighScore,
     setIsLeaderboardOpen,
     setIsUpgradeModalOpen,
@@ -410,7 +409,6 @@ export default function App() {
         unlockedSkins={unlockedSkins}
         onBuySkin={buySkin}
         onEquipSkin={equipSkin}
-        onAddGiftCoins={addGiftCoins}
       />
 
       {/* Settings Modal (Siyah/Beyaz Tema, 20 Müzik, Rastgele, SFX, 120 FPS) */}
