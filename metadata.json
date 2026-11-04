@@ -1,6 +1,6 @@
 {
-  "name": "CyberSnake - Neon Yılan Oyunu",
-  "description": "3 can hakkı, özel güçlendiriciler, dinamik ses efektleri ve high score liderlik tablosu içeren estetik neon siberpunk yılan oyunu.",
+  "name": "Mustafa Kemal - Yılan Oyunu",
+  "description": "Snake.io tarzı gerçek zamanlı çok oyunculu ve akıllı bot arenalı 120 FPS yılan oyunu. Zaman durdurma, market ve 20 müzik parçası.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -45,7 +45,27 @@ export interface BotSnake {
   growthPending: number;
 }
 
-export type PowerUpType = 'MAGNET' | 'SLOW' | 'DOUBLE_POINTS' | 'GOLDEN_APPLE';
+export type PowerUpType = 'MAGNET' | 'SLOW' | 'DOUBLE_POINTS' | 'GOLDEN_APPLE' | 'TIME_FREEZE';
+
+export type SnakeSkinId =
+  | 'SKIN_DEFAULT'
+  | 'SKIN_TURKISH'
+  | 'SKIN_GOLD'
+  | 'SKIN_GOKBORU'
+  | 'SKIN_GALAXY'
+  | 'SKIN_VOLCANO';
+
+export interface SnakeSkinConfig {
+  id: SnakeSkinId;
+  name: string;
+  price: number;
+  description: string;
+  headColor: string;
+  bodyColor1: string;
+  bodyColor2: string;
+  glowColor: string;
+  unlockedByDefault?: boolean;
+}
 
 export interface PowerUpItem {
   id: string;
@@ -87,6 +107,14 @@ export interface DifficultyConfig {
   scoreMultiplier: number;
   botCount: number;
   poisonRate: number; // probability of poison food appearing
+  aiIntelligenceLabel: string;
+  aiAggression: number;
+  aiAvoidanceDistance: number;
+  aiRayCount: number;
+  aiPredictiveCutoff: number;
+  aiBoostChance: number;
+  aiTurnSpeed: number;
+  aiPoisonAwareness: number;
 }
 
 export interface HighScoreEntry {
@@ -128,4 +156,9 @@ export interface LiveStandingItem {
   isPlayer: boolean;
   isAlive: boolean;
   length: number;
+  isRealHuman?: boolean;
 }
+
+export type GameMode = 'SOLO' | 'MULTIPLAYER';
+
+

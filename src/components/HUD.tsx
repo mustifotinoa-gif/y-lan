@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Home,
   ShoppingBag,
+  Hourglass,
 } from 'lucide-react';
 import { POWER_UP_CONFIG } from '../constants/gameConfig';
 import { ActivePowerUp, LiveStandingItem } from '../types/game';
@@ -36,6 +37,9 @@ interface HUDProps {
   liveStandings: LiveStandingItem[];
   isPaused: boolean;
   isMuted: boolean;
+  timeFreezeCharges?: number;
+  timeFreezeRemainingMs?: number;
+  onActivateTimeFreeze?: () => void;
   onTogglePause: () => void;
   onToggleMute: () => void;
   onOpenLeaderboard: () => void;
@@ -62,6 +66,9 @@ export const HUD: React.FC<HUDProps> = ({
   liveStandings,
   isPaused,
   isMuted,
+  timeFreezeCharges = 0,
+  timeFreezeRemainingMs = 0,
+  onActivateTimeFreeze,
   onTogglePause,
   onToggleMute,
   onOpenLeaderboard,
@@ -74,7 +81,7 @@ export const HUD: React.FC<HUDProps> = ({
   const heartCount = Math.ceil(maxLives);
 
   return (
-    <div className="w-full max-w-[620px] mx-auto mb-2 flex flex-col gap-1.5 select-none">
+    <div className="w-full max-w-[840px] mx-auto mb-2 flex flex-col gap-1.5 select-none">
       {/* Top Metrics Row */}
       <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-800 shadow-xl">
         {/* Lives Display with Half-Heart Support */}
@@ -152,6 +159,40 @@ export const HUD: React.FC<HUDProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Time Freeze Trigger / Status Button */}
+          <button
+            onClick={() => {
+              if (timeFreezeRemainingMs <= 0) {
+                if (timeFreezeCharges > 0 && onActivateTimeFreeze) {
+                  onActivateTimeFreeze();
+                } else {
+                  onOpenShop();
+                }
+              }
+            }}
+            title={
+              timeFreezeRemainingMs > 0
+                ? `Zaman Dondu: ${(timeFreezeRemainingMs / 1000).toFixed(1)}s`
+                : timeFreezeCharges > 0
+                ? `Zamanı Dondur (10s) - [T] Tuşu veya Tıkla (x${timeFreezeCharges})`
+                : 'Zaman Durdurma Markette! (10.000 Coin)'
+            }
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-bold transition-all active:scale-95 cursor-pointer ${
+              timeFreezeRemainingMs > 0
+                ? 'bg-cyan-400 text-slate-950 shadow-[0_0_12px_rgba(34,211,238,0.8)] animate-pulse'
+                : timeFreezeCharges > 0
+                ? 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/60 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
+                : 'bg-slate-800/80 hover:bg-slate-800 text-slate-400 border border-slate-700/60'
+            }`}
+          >
+            <Hourglass className={`w-3.5 h-3.5 ${timeFreezeRemainingMs > 0 ? 'animate-spin text-slate-950' : timeFreezeCharges > 0 ? 'text-cyan-400' : 'text-slate-400'}`} />
+            {timeFreezeRemainingMs > 0 ? (
+              <span className="font-extrabold text-[11px]">{(timeFreezeRemainingMs / 1000).toFixed(1)}s</span>
+            ) : (
+              <span className="text-[11px]">x{timeFreezeCharges}</span>
+            )}
+          </button>
+
           {/* Shop Button */}
           <button
             onClick={onOpenShop}

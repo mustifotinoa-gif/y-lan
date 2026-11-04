@@ -4,9 +4,11 @@ import {
   ARENA_SIZE,
   FOOD_CATALOG,
   SEGMENT_RADIUS,
+  SNAKE_SKINS,
 } from '../constants/gameConfig';
-import { FoodItem, LiveStandingItem } from '../types/game';
-import { Maximize2, Minimize2, Zap, Crown } from 'lucide-react';
+import { FoodItem, LiveStandingItem, SnakeSkinId, SnakeSkinConfig } from '../types/game';
+import { RemoteHumanPlayer, ChatMessage } from '../services/multiplayer';
+import { Maximize2, Minimize2, Zap, Crown, Hourglass, Users, Radio, MessageSquare, Send } from 'lucide-react';
 
 interface GameBoardProps {
   engineRef: React.MutableRefObject<any>;
@@ -17,6 +19,10 @@ interface GameBoardProps {
   onBoostEnd: () => void;
   liveStandings: LiveStandingItem[];
   playerRank: number;
+  remotePlayers?: RemoteHumanPlayer[];
+  isMultiplayer?: boolean;
+  chatMessages?: ChatMessage[];
+  onSendChatMessage?: (text: string) => void;
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({
@@ -28,6 +34,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   onBoostEnd,
   liveStandings,
   playerRank,
+  remotePlayers = [],
+  isMultiplayer = false,
+  chatMessages = [],
+  onSendChatMessage,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -100,13 +110,18 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.button === 2 || e.shiftKey) {
+    // On PC with mouse: left-click, right-click or shift triggers Turbo Boost!
+    if (e.pointerType === 'mouse') {
+      if (e.button === 0 || e.button === 2 || e.shiftKey) {
+        onBoostStart();
+      }
+    } else if (e.button === 2 || e.shiftKey) {
       onBoostStart();
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.button === 2 || e.shiftKey) {
+    if (e.pointerType === 'mouse' || e.button === 2 || e.shiftKey) {
       onBoostEnd();
     }
   };
@@ -280,6 +295,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       });
 
       // 5. Draw Bot Snakes (Snake.io Style: Glossy 3D rounded segments + expressive eyes)
+      const isFrozen = eng.timeFreezeRemainingMs > 0;
+
       eng.bots.forEach((bot: any) => {
         if (!bot.isAlive || bot.body.length === 0) return;
 
@@ -294,7 +311,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
           if (sx < -30 || sx > width + 30 || sy < -30 || sy > height + 30) continue;
 
-          // Segment gradient for 3D tubular look
+          // Segment gradient for 3D tubular look (frozen ice if time freeze active)
           const grad = ctx.createRadialGradient(
             sx - segRad * 0.3,
             sy - segRad * 0.3,
@@ -303,9 +320,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             sy,
             segRad
           );
-          grad.addColorStop(0, bot.headColor);
-          grad.addColorStop(0.7, bot.color);
-          grad.addColorStop(1, '#020617');
+
+          if (isFrozen) {
+            // Crystalline frozen ice style
+            grad.addColorStop(0, '#e0f2fe');
+            grad.addColorStop(0.5, '#38bdf8');
+            grad.addColorStop(1, '#0369a1');
+          } else {
+            grad.addColorStop(0, bot.headColor);
+            grad.addColorStop(0.7, bot.color);
+            grad.addColorStop(1, '#020617');
+          }
 
           ctx.save();
           ctx.fillStyle = grad;
@@ -313,9 +338,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           ctx.arc(sx, sy, segRad, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-          ctx.lineWidth = 1.2 * zoom;
-          ctx.stroke();
+          if (isFrozen) {
+            // Ice crystal frost outline
+            ctx.strokeStyle = 'rgba(224, 242, 254, 0.85)';
+            ctx.lineWidth = 2 * zoom;
+            ctx.stroke();
+          } else {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1.2 * zoom;
+            ctx.stroke();
+          }
           ctx.restore();
         }
 
@@ -337,16 +369,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         const eyeRad = segRad * 0.45;
         const pupilRad = eyeRad * 0.5;
 
-        // White sclera
+        // White sclera (or light icy blue when frozen)
         ctx.save();
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = isFrozen ? '#bae6fd' : '#ffffff';
         ctx.beginPath();
         ctx.arc(e1x, e1y, eyeRad, 0, Math.PI * 2);
         ctx.arc(e2x, e2y, eyeRad, 0, Math.PI * 2);
         ctx.fill();
 
-        // Dark pupils looking forward
-        ctx.fillStyle = '#0f172a';
+        // Dark pupils looking forward (frosty crystalline when frozen)
+        ctx.fillStyle = isFrozen ? '#0369a1' : '#0f172a';
         ctx.beginPath();
         ctx.arc(
           e1x + Math.cos(bot.angle) * (eyeRad * 0.35),
@@ -365,20 +397,127 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         ctx.fill();
         ctx.restore();
 
-        // Bot Name Tag
+        // Bot Name Tag (shows frozen status indicator)
         ctx.save();
         ctx.font = `bold ${Math.max(10, Math.round(11 * zoom))}px sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillStyle = isFrozen ? '#38bdf8' : 'rgba(255, 255, 255, 0.85)';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 4;
-        ctx.fillText(bot.name, hx, hy - segRad - 6 * zoom);
+        ctx.fillText(isFrozen ? `🧊 ${bot.name}` : bot.name, hx, hy - segRad - 6 * zoom);
         ctx.restore();
       });
+
+      // 5.5. Draw Remote Human Players in Multiplayer
+      if (remotePlayers && remotePlayers.length > 0) {
+        remotePlayers.forEach((rp) => {
+          if (!rp.isAlive || !rp.body || rp.body.length === 0) return;
+
+          const rSkin =
+            (SNAKE_SKINS as Record<string, SnakeSkinConfig>)[rp.skin] ||
+            SNAKE_SKINS.SKIN_DEFAULT;
+          const rSegRad = SEGMENT_RADIUS * zoom;
+
+          // Draw remote player segments
+          for (let i = rp.body.length - 1; i >= 0; i--) {
+            const pt = rp.body[i];
+            const sx = toScreenX(pt.x);
+            const sy = toScreenY(pt.y);
+            if (sx < -30 || sx > width + 30 || sy < -30 || sy > height + 30) continue;
+
+            const grad = ctx.createRadialGradient(
+              sx - rSegRad * 0.3,
+              sy - rSegRad * 0.3,
+              rSegRad * 0.1,
+              sx,
+              sy,
+              rSegRad
+            );
+
+            if (i === 0) {
+              grad.addColorStop(0, '#ffffff');
+              grad.addColorStop(0.5, rSkin.headColor);
+              grad.addColorStop(1, '#020617');
+            } else if (i % 2 === 0) {
+              grad.addColorStop(0, rSkin.bodyColor1);
+              grad.addColorStop(0.7, rSkin.bodyColor1);
+              grad.addColorStop(1, '#020617');
+            } else {
+              grad.addColorStop(0, rSkin.bodyColor2);
+              grad.addColorStop(0.7, rSkin.bodyColor2);
+              grad.addColorStop(1, '#020617');
+            }
+
+            ctx.save();
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(sx, sy, rSegRad, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cyber ring with distinct neon for human players
+            ctx.strokeStyle = rp.isBoosting ? 'rgba(251, 191, 36, 0.9)' : rSkin.glowColor;
+            ctx.lineWidth = 1.6 * zoom;
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Remote Player Head with Eyes
+          const rHead = rp.body[0];
+          const rx = toScreenX(rHead.x);
+          const ry = toScreenY(rHead.y);
+
+          // Boost Aura
+          if (rp.isBoosting) {
+            ctx.save();
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 20;
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+            ctx.lineWidth = 2.5 * zoom;
+            ctx.beginPath();
+            ctx.arc(rx, ry, rSegRad * 1.3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Eyes
+          const eyeOffset = rSegRad * 0.55;
+          const e1x = rx + Math.cos(rp.angle + Math.PI / 3) * eyeOffset;
+          const e1y = ry + Math.sin(rp.angle + Math.PI / 3) * eyeOffset;
+          const e2x = rx + Math.cos(rp.angle - Math.PI / 3) * eyeOffset;
+          const e2y = ry + Math.sin(rp.angle - Math.PI / 3) * eyeOffset;
+          const eyeRad = rSegRad * 0.45;
+
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(e1x, e1y, eyeRad, 0, Math.PI * 2);
+          ctx.arc(e2x, e2y, eyeRad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.arc(e1x + Math.cos(rp.angle) * (eyeRad * 0.35), e1y + Math.sin(rp.angle) * (eyeRad * 0.35), eyeRad * 0.5, 0, Math.PI * 2);
+          ctx.arc(e2x + Math.cos(rp.angle) * (eyeRad * 0.35), e2y + Math.sin(rp.angle) * (eyeRad * 0.35), eyeRad * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          // Human Player Name Tag + "👤 GERÇEK OYUNCU" Glowing Neon Badge
+          ctx.save();
+          ctx.font = `bold ${Math.max(10, Math.round(11 * zoom))}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#34d399';
+          ctx.shadowColor = '#059669';
+          ctx.shadowBlur = 6;
+          ctx.fillText(`👤 ${rp.name}`, rx, ry - rSegRad - 6 * zoom);
+          ctx.restore();
+        });
+      }
 
       // 6. Draw Player Snake (Mustafa Kemal / Player Snake)
       const pBody = eng.playerBody;
       const pRad = SEGMENT_RADIUS * zoom;
+      const skinId = (eng.selectedSkin as SnakeSkinId) || 'SKIN_DEFAULT';
+      const skinsDict = SNAKE_SKINS as Record<SnakeSkinId, SnakeSkinConfig>;
+      const currentSkin = skinsDict[skinId] || skinsDict.SKIN_DEFAULT;
 
       // Draw segments from tail to head
       for (let i = pBody.length - 1; i >= 0; i--) {
@@ -386,7 +525,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         const sx = toScreenX(pt.x);
         const sy = toScreenY(pt.y);
 
-        // 3D Tubular Gradient (Cyber Cyan to Emerald)
+        // 3D Tubular Gradient customized by current skin
         const grad = ctx.createRadialGradient(
           sx - pRad * 0.3,
           sy - pRad * 0.3,
@@ -397,17 +536,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         );
 
         if (i === 0) {
-          grad.addColorStop(0, '#a5f3fc');
-          grad.addColorStop(0.6, '#00e5ff');
-          grad.addColorStop(1, '#0e7490');
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.5, currentSkin.headColor);
+          grad.addColorStop(1, '#020617');
         } else if (i % 2 === 0) {
-          grad.addColorStop(0, '#67e8f9');
-          grad.addColorStop(0.6, '#06b6d4');
-          grad.addColorStop(1, '#083344');
+          grad.addColorStop(0, currentSkin.bodyColor1);
+          grad.addColorStop(0.7, currentSkin.bodyColor1);
+          grad.addColorStop(1, '#020617');
         } else {
-          grad.addColorStop(0, '#6ee7b7');
-          grad.addColorStop(0.6, '#10b981');
-          grad.addColorStop(1, '#064e3b');
+          grad.addColorStop(0, currentSkin.bodyColor2);
+          grad.addColorStop(0.7, currentSkin.bodyColor2);
+          grad.addColorStop(1, '#020617');
         }
 
         ctx.save();
@@ -417,7 +556,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         ctx.fill();
 
         // Segment Cyber Ring
-        ctx.strokeStyle = isBoosting ? 'rgba(251, 191, 36, 0.7)' : 'rgba(255, 255, 255, 0.35)';
+        ctx.strokeStyle = isBoosting ? 'rgba(251, 191, 36, 0.7)' : currentSkin.glowColor;
         ctx.lineWidth = 1.3 * zoom;
         ctx.stroke();
         ctx.restore();
@@ -573,6 +712,21 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         ctx.fill();
       });
 
+      // Draw Remote Human Players Dots on Radar (Glowing Emerald)
+      if (remotePlayers && remotePlayers.length > 0) {
+        remotePlayers.forEach((rp) => {
+          if (!rp.isAlive || !rp.body || rp.body.length === 0) return;
+          const rdx = (rp.body[0].x - ARENA_SIZE / 2) * radarScale;
+          const rdy = (rp.body[0].y - ARENA_SIZE / 2) * radarScale;
+          ctx.fillStyle = '#10b981';
+          ctx.shadowColor = '#34d399';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(rCenterX + rdx, rCenterY + rdy, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
       // Draw Player Dot & Direction Arrow on Radar
       const pdx = (eng.playerX - ARENA_SIZE / 2) * radarScale;
       const pdy = (eng.playerY - ARENA_SIZE / 2) * radarScale;
@@ -586,6 +740,58 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
       ctx.restore();
 
+      // 10. Time Freeze Screen Frost & Banner
+      if (eng.timeFreezeRemainingMs > 0) {
+        ctx.save();
+        // Pulsing Frost Vignette around edges
+        const frostVignette = ctx.createRadialGradient(
+          width / 2,
+          height / 2,
+          Math.min(width, height) * 0.35,
+          width / 2,
+          height / 2,
+          Math.max(width, height) * 0.75
+        );
+        frostVignette.addColorStop(0, 'rgba(6, 182, 212, 0)');
+        frostVignette.addColorStop(0.7, 'rgba(56, 189, 248, 0.2)');
+        frostVignette.addColorStop(1, 'rgba(14, 165, 233, 0.45)');
+        ctx.fillStyle = frostVignette;
+        ctx.fillRect(0, 0, width, height);
+
+        // Solid Ice Edge Border
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(3, 3, width - 6, height - 6);
+
+        // Top Center Time Freeze Countdown Banner
+        const remainingSec = (eng.timeFreezeRemainingMs / 1000).toFixed(1);
+        const bannerW = 240;
+        const bannerH = 34;
+        const bx = (width - bannerW) / 2;
+        const by = 16;
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(bx, by, bannerW, bannerH, 10);
+        } else {
+          ctx.rect(bx, by, bannerW, bannerH);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 13px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#0284c7';
+        ctx.shadowBlur = 8;
+        ctx.fillText(`⏳ ZAMAN DURDU: ${remainingSec}s`, width / 2, by + bannerH / 2);
+        ctx.restore();
+      }
+
       animId = requestAnimationFrame(render);
     };
 
@@ -596,7 +802,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-[4/3] max-w-[620px] max-h-[580px] mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-black select-none touch-none"
+      className="relative w-full aspect-[4/3] sm:aspect-[16/10] max-w-[840px] max-h-[52vh] sm:max-h-[600px] mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-black select-none touch-none"
       onContextMenu={(e) => e.preventDefault()}
     >
       <canvas
@@ -610,6 +816,20 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         onTouchCancel={handleTouchEnd}
         className="w-full h-full block cursor-crosshair touch-none"
       />
+
+      {/* Top-Left Multiplayer Online Indicator */}
+      {isMultiplayer && (
+        <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-950/85 backdrop-blur-md border border-emerald-500/40 text-[11px] font-mono shadow-md pointer-events-none">
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-emerald-300 font-bold flex items-center gap-1">
+            <Users className="w-3.5 h-3.5" />
+            <span>{remotePlayers.length + 1} Gerçek Oyuncu</span>
+          </span>
+        </div>
+      )}
 
       {/* Snake.io Style Top-Right Live Arena Leaderboard */}
       <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none flex flex-col gap-1 p-2 rounded-xl bg-slate-950/80 backdrop-blur-md border border-slate-800/80 shadow-lg text-[11px] font-mono min-w-[130px]">
@@ -630,8 +850,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 : 'text-slate-300'
             }`}
           >
-            <span className="truncate max-w-[75px] flex items-center gap-1">
+            <span className="truncate max-w-[85px] flex items-center gap-1">
               {idx === 0 && <Crown className="w-2.5 h-2.5 text-amber-400 shrink-0" />}
+              {snake.isRealHuman && <span className="text-emerald-400 font-bold text-[9px] shrink-0" title="Gerçek Oyuncu">👤</span>}
               <span>{idx + 1}. {snake.isPlayer ? 'Sen' : snake.name}</span>
             </span>
             <span className="tabular-nums text-[10px] text-slate-400">
@@ -640,6 +861,36 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           </div>
         ))}
       </div>
+
+      {/* Real-time Multiplayer Chat Overlay (Left-Center) */}
+      {isMultiplayer && chatMessages && chatMessages.length > 0 && (
+        <div className="absolute top-12 left-2.5 z-20 pointer-events-none flex flex-col gap-1.5 max-w-[200px]">
+          {chatMessages.slice(-4).map((msg) => (
+            <div
+              key={msg.id}
+              className="px-2.5 py-1 rounded-xl bg-slate-950/85 backdrop-blur-md border border-emerald-500/30 text-white text-[10px] shadow-lg animate-fade-in flex items-center gap-1.5"
+            >
+              <span className="font-bold text-emerald-300 font-mono">{msg.sender}:</span>
+              <span className="text-slate-200">{msg.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Multiplayer Quick Emote Reactions Bar (Bottom Center) */}
+      {isMultiplayer && onSendChatMessage && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-2 py-1 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-800 shadow-xl">
+          {['🔥', '👑', '⚡', 'GG!', 'Selam!'].map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => onSendChatMessage(emoji)}
+              className="px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-200 font-bold text-xs transition-all active:scale-95 cursor-pointer"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Camera Zoom Toggle Button in Bottom-Left */}
       <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">

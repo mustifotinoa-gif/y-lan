@@ -16,6 +16,15 @@ class SoundEngine {
     } catch {
       this.isMuted = false;
     }
+
+    if (typeof window !== 'undefined') {
+      const unlock = () => {
+        this.initCtx();
+      };
+      window.addEventListener('pointerdown', unlock, { passive: true, once: false });
+      window.addEventListener('touchstart', unlock, { passive: true, once: false });
+      window.addEventListener('keydown', unlock, { passive: true, once: false });
+    }
   }
 
   private initCtx() {
@@ -215,6 +224,10 @@ class SoundEngine {
     }
   }
 
+  public playBotKill() {
+    this.playBotEliminated();
+  }
+
   public playBotEat() {
     if (this.isMuted) return;
     this.initCtx();
@@ -293,6 +306,33 @@ class SoundEngine {
         osc.start(now + idx * 0.14);
         osc.stop(now + idx * 0.14 + 0.35);
       });
+    } catch {
+      // Ignore
+    }
+  }
+
+  public playTimeFreeze() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      // Chrono warp bass drop + crystal resonance
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.4);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.5);
     } catch {
       // Ignore
     }

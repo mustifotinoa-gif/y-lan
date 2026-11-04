@@ -1,6 +1,24 @@
-import React from 'react';
-import { X, Heart, Zap, Shield, Coins, Sparkles, Check, ArrowUpRight } from 'lucide-react';
-import { UpgradeLevels } from '../types/game';
+import React, { useState } from 'react';
+import {
+  X,
+  Heart,
+  Zap,
+  Shield,
+  Coins,
+  Sparkles,
+  Check,
+  ArrowUpRight,
+  Hourglass,
+  Palette,
+  ShoppingBag,
+  Gift,
+  Flame,
+  Magnet,
+  ShieldCheck,
+  Info,
+} from 'lucide-react';
+import { UpgradeLevels, SnakeSkinId } from '../types/game';
+import { SNAKE_SKINS } from '../constants/gameConfig';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -8,7 +26,16 @@ interface UpgradeModalProps {
   coins: number;
   upgrades: UpgradeLevels;
   onBuyUpgrade: (type: keyof UpgradeLevels) => boolean;
+  timeFreezeCharges: number;
+  onBuyTimeFreeze: () => boolean;
+  selectedSkin?: SnakeSkinId;
+  unlockedSkins?: SnakeSkinId[];
+  onBuySkin?: (skinId: SnakeSkinId) => boolean;
+  onEquipSkin?: (skinId: SnakeSkinId) => void;
+  onAddGiftCoins?: (amount: number) => void;
 }
+
+type MarketTab = 'powers' | 'upgrades' | 'skins';
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   isOpen,
@@ -16,8 +43,26 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   coins,
   upgrades,
   onBuyUpgrade,
+  timeFreezeCharges = 0,
+  onBuyTimeFreeze,
+  selectedSkin = 'SKIN_DEFAULT',
+  unlockedSkins = ['SKIN_DEFAULT'],
+  onBuySkin,
+  onEquipSkin,
+  onAddGiftCoins,
 }) => {
+  const [activeTab, setActiveTab] = useState<MarketTab>('powers');
+  const [giftFeedback, setGiftFeedback] = useState<string | null>(null);
+
   if (!isOpen) return null;
+
+  const handleClaimGift = () => {
+    if (onAddGiftCoins) {
+      onAddGiftCoins(10000);
+      setGiftFeedback('+10.000 Coin Hesabınıza Eklendi!');
+      setTimeout(() => setGiftFeedback(null), 2500);
+    }
+  };
 
   const UPGRADE_DATA = [
     {
@@ -81,30 +126,51 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
     },
   ];
 
+  const skinList = Object.values(SNAKE_SKINS);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-xl bg-slate-900 border border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-950/60 overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/70">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-              <Sparkles className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in select-none">
+      <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-cyan-500/40 rounded-2xl sm:rounded-3xl shadow-[0_0_50px_rgba(6,182,212,0.25)] overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Header Bar */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-800 bg-slate-950/90 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-cyan-500/20 to-amber-500/20 border border-cyan-500/40 text-cyan-300">
+              <ShoppingBag className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                Siber Yetenek & Geliştirme Mağazası
-              </h2>
-              <p className="text-xs text-slate-400">
-                Kazandığınız coinler ile can, hız ve esnekliğinizi artırın
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+                  SİBER MARKET & MAĞAZA
+                </h2>
+                <span className="hidden xs:inline-block px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold border border-cyan-500/40">
+                  v2.0
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 hidden sm:block">
+                Zaman Durdurma, Efsanevi Yetenekler ve Özel Yılan Kostümleri
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs">
+          {/* Right Header: Coins & Gift Button & Close */}
+          <div className="flex items-center gap-2">
+            {/* Gift Coins Button */}
+            <button
+              onClick={handleClaimGift}
+              title="Test ve Hızlı Deneme İçin +10.000 Hediye Coin Al"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+            >
+              <Gift className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
+              <span className="hidden xs:inline">+10.000</span>
+              <span className="xs:hidden">+10K</span>
+            </button>
+
+            {/* Current Coins Badge */}
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold text-xs">
               <Coins className="w-4 h-4 text-amber-400" />
               <span className="tabular-nums">{coins.toLocaleString('tr-TR')}</span>
             </div>
+
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
@@ -115,83 +181,360 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           </div>
         </div>
 
-        {/* Upgrade Cards List */}
-        <div className="p-4 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
-          {UPGRADE_DATA.map((upg) => {
-            const isMax = upg.currentLevel >= upg.maxLevel;
-            const nextLevelData = !isMax ? upg.levels[upg.currentLevel] : null;
-            const canAfford = nextLevelData ? coins >= nextLevelData.cost : false;
-            const Icon = upg.icon;
+        {/* Gift Claimed Toast Notification */}
+        {giftFeedback && (
+          <div className="px-4 py-1.5 bg-emerald-500/20 border-b border-emerald-500/40 text-emerald-300 text-xs font-bold text-center flex items-center justify-center gap-2 animate-fade-in">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span>{giftFeedback}</span>
+          </div>
+        )}
 
-            return (
-              <div
-                key={upg.id}
-                className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-              >
-                {/* Left Info */}
-                <div className="flex items-start gap-3 flex-1">
-                  <div className={`p-2.5 rounded-xl ${upg.bgColor} border ${upg.borderColor} ${upg.color} shrink-0 mt-0.5 sm:mt-0`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm text-slate-100">{upg.title}</h3>
-                      <div className="flex gap-1">
-                        {Array.from({ length: upg.maxLevel }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-2 h-2 rounded-full ${
-                              i < upg.currentLevel ? 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]' : 'bg-slate-800'
-                            }`}
-                          />
-                        ))}
+        {/* Tab Navigation */}
+        <div className="flex items-center border-b border-slate-800 bg-slate-950/50 px-3 sm:px-6 pt-2 gap-2 shrink-0 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('powers')}
+            className={`flex items-center gap-2 pb-2.5 px-3 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'powers'
+                ? 'border-cyan-400 text-cyan-300 shadow-[0_2px_10px_rgba(6,182,212,0.3)]'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Hourglass className="w-4 h-4 text-cyan-400" />
+            <span>⏳ Efsanevi Güçler (Zaman Durdurma)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('upgrades')}
+            className={`flex items-center gap-2 pb-2.5 px-3 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'upgrades'
+                ? 'border-amber-400 text-amber-300 shadow-[0_2px_10px_rgba(245,158,11,0.3)]'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span>⚡ Kalıcı Geliştirmeler</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('skins')}
+            className={`flex items-center gap-2 pb-2.5 px-3 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'skins'
+                ? 'border-rose-400 text-rose-300 shadow-[0_2px_10px_rgba(244,63,94,0.3)]'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Palette className="w-4 h-4 text-rose-400" />
+            <span>🎨 Yılan Kostümleri</span>
+          </button>
+        </div>
+
+        {/* Tab Body */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+          {/* TAB 1: EFSANEVİ GÜÇLER & ZAMAN DURDURMA */}
+          {activeTab === 'powers' && (
+            <div className="space-y-4">
+              {/* FEATURED: ZAMAN DURDURMA (10 SANİYE) - 10.000 COIN */}
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-950/80 via-slate-900 to-slate-950 border-2 border-cyan-400/70 p-4 sm:p-5 shadow-[0_0_35px_rgba(6,182,212,0.3)]">
+                {/* Background Chrono Ring */}
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/40 shrink-0">
+                      <Hourglass className="w-7 h-7 text-white fill-white animate-pulse" />
+                    </div>
+
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full bg-cyan-400/20 border border-cyan-400/40 text-cyan-300 text-[10px] font-black uppercase tracking-wider">
+                          Efsanevi Eşya
+                        </span>
+                        <span className="text-[10px] text-amber-300 font-mono font-bold bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                          Süre: 10 Saniye
+                        </span>
+                        <span className="text-[10px] text-emerald-300 font-mono font-bold bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          Envanter: x{timeFreezeCharges}
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg sm:text-xl font-black text-white mt-1 tracking-tight">
+                        ZAMAN DURDURMA (10 SANİYE)
+                      </h3>
+
+                      <p className="text-xs text-slate-300 mt-1 max-w-md leading-relaxed">
+                        Arenadaki tüm botları <strong className="text-cyan-300">10 saniye</strong> boyunca kaskatı buz kütlesine çevirir. Donmuş botlar hareket edemez, siz ise üzerlerine sürerek onları tek dokunuşla parçalayabilir ve devasa yemek ziyafeti çekebilirsiniz!
+                      </p>
+
+                      <div className="flex items-center gap-2 mt-2 text-[11px] text-cyan-400/90 font-mono">
+                        <Info className="w-3.5 h-3.5" />
+                        <span>Kullanım: Oyun içinde <strong>[T]</strong> tuşuna basın veya ekrandaki <strong>⏳ Dondur</strong> butonuna dokunun.</span>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {isMax
-                        ? 'Maksimum seviyeye ulaşıldı!'
-                        : nextLevelData?.desc}
-                    </p>
+                  </div>
+
+                  {/* Buy Button */}
+                  <div className="shrink-0 w-full sm:w-auto flex flex-col items-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onBuyTimeFreeze()}
+                      disabled={coins < 10000}
+                      className={`w-full sm:w-auto px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer ${
+                        coins >= 10000
+                          ? 'bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 shadow-cyan-500/30 active:scale-95'
+                          : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-80'
+                      }`}
+                    >
+                      <Coins className="w-4 h-4" />
+                      <span>10.000 Coin ile Satın Al</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
+                    {coins < 10000 && (
+                      <span className="text-[10px] text-amber-400 font-mono text-center sm:text-right w-full">
+                        Yetersiz bakiye! (Yukarıdaki 🎁 +10.000 butonundan anında alabilirsiniz)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Extra Market Consumables / Tactical items */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-2 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                      <Coins className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-white">Mega Lahmacun Ziyafeti</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Arenada hemen yanınızda 3 dev lahmacun ve +200 kitle yaratır.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                    <span className="text-xs font-mono font-bold text-amber-300">350 Coin</span>
+                    <span className="text-[10px] text-slate-500 font-mono">Otomatik Sahada</span>
                   </div>
                 </div>
 
-                {/* Right Action Button */}
-                <div className="shrink-0 self-end sm:self-center">
-                  {isMax ? (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span>Maksimum</span>
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-2 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 shrink-0">
+                      <Magnet className="w-4 h-4" />
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={!canAfford}
-                      onClick={() => onBuyUpgrade(upg.id)}
-                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                        canAfford
-                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/25 active:scale-95'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                      }`}
-                    >
-                      <Coins className="w-3.5 h-3.5" />
-                      <span>{nextLevelData?.cost} Coin</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                    <div>
+                      <h4 className="font-bold text-xs text-white">Mıknatıs Girdabı</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Sahadaki küreler doğrudan yılanınıza doğru uçar.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                    <span className="text-xs font-mono font-bold text-amber-300">500 Coin</span>
+                    <span className="text-[10px] text-slate-500 font-mono">Otomatik Sahada</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-2 rounded-lg bg-teal-500/15 border border-teal-500/30 text-teal-400 shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-white">Siber Kalkan</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Tüm zehirli baloncuklara ve bot darbelerine karşı tam koruma.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                    <span className="text-xs font-mono font-bold text-amber-300">750 Coin</span>
+                    <span className="text-[10px] text-slate-500 font-mono">Otomatik Sahada</span>
+                  </div>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* TAB 2: KALICI GELİŞTİRMELER */}
+          {activeTab === 'upgrades' && (
+            <div className="space-y-3">
+              {UPGRADE_DATA.map((upg) => {
+                const isMax = upg.currentLevel >= upg.maxLevel;
+                const nextLevelData = !isMax ? upg.levels[upg.currentLevel] : null;
+                const canAfford = nextLevelData ? coins >= nextLevelData.cost : false;
+                const Icon = upg.icon;
+
+                return (
+                  <div
+                    key={upg.id}
+                    className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className={`p-2.5 rounded-xl ${upg.bgColor} border ${upg.borderColor} ${upg.color} shrink-0 mt-0.5 sm:mt-0`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-sm text-slate-100">{upg.title}</h3>
+                          <div className="flex gap-1">
+                            {Array.from({ length: upg.maxLevel }).map((_, i) => (
+                              <div
+                                key={i}
+                                className={`w-2.5 h-2.5 rounded-full ${
+                                  i < upg.currentLevel ? 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]' : 'bg-slate-800'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {isMax ? 'Maksimum seviyeye ulaşıldı!' : nextLevelData?.desc}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 self-end sm:self-center">
+                      {isMax ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span>Maksimum</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!canAfford}
+                          onClick={() => onBuyUpgrade(upg.id)}
+                          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            canAfford
+                              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/25 active:scale-95'
+                              : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                          }`}
+                        >
+                          <Coins className="w-3.5 h-3.5" />
+                          <span>{nextLevelData?.cost} Coin</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* TAB 3: YILAN KOSTÜMLERİ & SKİNLER */}
+          {activeTab === 'skins' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {skinList.map((skin) => {
+                const isOwned = unlockedSkins.includes(skin.id);
+                const isEquipped = selectedSkin === skin.id;
+                const canAfford = coins >= skin.price;
+
+                return (
+                  <div
+                    key={skin.id}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                      isEquipped
+                        ? 'bg-cyan-950/40 border-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400'
+                        : isOwned
+                        ? 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                        : 'bg-slate-950/40 border-slate-800/60 opacity-90'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Row: Skin Name & Status */}
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-bold text-sm text-white flex items-center gap-1.5">
+                          <span>{skin.name}</span>
+                        </h4>
+                        {isEquipped && (
+                          <span className="px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 font-bold text-[10px] border border-cyan-400/40">
+                            Aktif
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Skin Visual Color Preview Bar */}
+                      <div className="flex items-center gap-1.5 my-2.5 p-2 rounded-xl bg-slate-900 border border-slate-800">
+                        {/* 4 Snake Segment Preview Circles */}
+                        <div
+                          className="w-5 h-5 rounded-full shadow-md"
+                          style={{ backgroundColor: skin.headColor }}
+                        />
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: skin.bodyColor1 }}
+                        />
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: skin.bodyColor2 }}
+                        />
+                        <div
+                          className="w-4 h-4 rounded-full border border-white/40"
+                          style={{ backgroundColor: skin.headColor }}
+                        />
+                        <span className="text-[10px] text-slate-400 ml-auto font-mono">
+                          {skin.name}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-400 leading-snug">
+                        {skin.description}
+                      </p>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="pt-2 border-t border-slate-800/80">
+                      {isEquipped ? (
+                        <div className="w-full py-2 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold flex items-center justify-center gap-1.5 border border-cyan-500/30">
+                          <Check className="w-4 h-4" />
+                          <span>Kullanımda</span>
+                        </div>
+                      ) : isOwned ? (
+                        <button
+                          type="button"
+                          onClick={() => onEquipSkin && onEquipSkin(skin.id)}
+                          className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                        >
+                          Kuşan
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!canAfford}
+                          onClick={() => onBuySkin && onBuySkin(skin.id)}
+                          className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            canAfford
+                              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/25 active:scale-95'
+                              : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                          }`}
+                        >
+                          <Coins className="w-3.5 h-3.5" />
+                          <span>{skin.price.toLocaleString('tr-TR')} Coin ile Aç</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between text-xs text-slate-400">
-          <span>Yemek toplayarak ve bot avlayarak coin biriktirebilirsiniz.</span>
+        <div className="px-4 sm:px-6 py-3 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <span className="hidden sm:inline">
+            Zaman durdurmayı oyun içinde <strong className="text-cyan-300">[T]</strong> tuşu veya butonla dilediğiniz an açabilirsiniz.
+          </span>
+          <span className="sm:hidden text-[11px]">
+            Zaman Durdurma: 10 Saniye / 10.000 Coin
+          </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
+            className="px-5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition-colors cursor-pointer"
           >
-            Tamam
+            Kapat
           </button>
         </div>
       </div>

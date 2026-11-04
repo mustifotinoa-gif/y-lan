@@ -14,6 +14,7 @@ import {
   POWER_UP_CONFIG,
   SEGMENT_RADIUS,
   SEGMENT_SPACING,
+  SNAKE_SKINS,
 } from '../constants/gameConfig';
 import { sound } from '../services/audio';
 import { getBestScore, getHighScores, isHighScore, saveHighScore } from '../services/storage';
@@ -31,8 +32,11 @@ import {
   Point,
   PowerUpItem,
   PowerUpType,
+  SnakeSkinId,
   UpgradeLevels,
+  GameMode,
 } from '../types/game';
+import { multiplayer, RemoteHumanPlayer, ChatMessage } from '../services/multiplayer';
 
 // Engine state structure kept in a ref for zero-garbage 120 FPS RAF performance
 interface GameEngineState {
@@ -62,6 +66,8 @@ interface GameEngineState {
   invulnerableUntil: number;
   durationSeconds: number;
   lastTime: number;
+  timeFreezeRemainingMs: number;
+  selectedSkin: SnakeSkinId;
 }
 
 export function useSnakeGame() {
@@ -112,6 +118,53 @@ export function useSnakeGame() {
     };
   });
 
+  // Time Freeze (Zaman Durdurma) persistent state
+  const [timeFreezeCharges, setTimeFreezeCharges] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('cybersnake_time_freeze_charges');
+      return saved ? Number(saved) : 1; // 1 free charge to enjoy!
+    } catch {
+      return 1;
+    }
+  });
+
+  const [timeFreezeRemainingMs, setTimeFreezeRemainingMs] = useState<number>(0);
+
+  // Snake Skin selection persistent state
+  const [selectedSkin, setSelectedSkin] = useState<SnakeSkinId>(() => {
+    try {
+      const saved = localStorage.getItem('cybersnake_selected_skin') as SnakeSkinId;
+      return saved && SNAKE_SKINS[saved] ? saved : 'SKIN_DEFAULT';
+    } catch {
+      return 'SKIN_DEFAULT';
+    }
+  });
+
+  const [unlockedSkins, setUnlockedSkins] = useState<SnakeSkinId[]>(() => {
+    try {
+      const saved = localStorage.getItem('cybersnake_unlocked_skins');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return ['SKIN_DEFAULT'];
+  });
+
+  // Multiplayer Game Mode State
+  const [gameMode, setGameMode] = useState<GameMode>('MULTIPLAYER');
+  const [roomId, setRoomId] = useState<string>('GLOBAL');
+  const [playerName, setPlayerName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('cybersnake_player_name') || 'Mustafa Kemal';
+    } catch {
+      return 'Mustafa Kemal';
+    }
+  });
+  const [remotePlayers, setRemotePlayers] = useState<RemoteHumanPlayer[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [multiplayerPing, setMultiplayerPing] = useState<number>(24);
+
   // Calculate maximum lives with health upgrade
   const maxPossibleLives = Math.min(
     5.0,
@@ -146,6 +199,8 @@ export function useSnakeGame() {
     invulnerableUntil: 0,
     durationSeconds: 0,
     lastTime: performance.now(),
+    timeFreezeRemainingMs: 0,
+    selectedSkin: 'SKIN_DEFAULT',
   });
 
   // Coin updates
@@ -282,6 +337,110 @@ export function useSnakeGame() {
     });
   }, []);
 
+  // 10,000 Coin Time Freeze purchase (requested explicitly by user!)
+  const buyTimeFreeze = useCallback((): boolean => {
+    const PRICE = 10000;
+    if (coins < PRICE) return false;
+
+    updateCoins(-PRICE);
+    sound.playPowerUp();
+
+    setTimeFreezeCharges((prev) => {
+      const next = prev + 1;
+      try {
+        localStorage.setItem('cybersnake_time_freeze_charges', String(next));
+      } catch {}
+      return next;
+    });
+
+    addEngineFloatingText(
+      engineRef.current.playerX,
+      engineRef.current.playerY - 30,
+      '⏳ ZAMAN DURDURMA ALINDI! (+1 Hak)',
+      '#38bdf8'
+    );
+    return true;
+  }, [coins, updateCoins, addEngineFloatingText]);
+
+  // Activate 10-second Time Freeze!
+  const activateTimeFreeze = useCallback((): boolean => {
+    if (timeFreezeCharges <= 0) return false;
+    if (engineRef.current.timeFreezeRemainingMs > 0) return false;
+
+    setTimeFreezeCharges((prev) => {
+      const next = Math.max(0, prev - 1);
+      try {
+        localStorage.setItem('cybersnake_time_freeze_charges', String(next));
+      } catch {}
+      return next;
+    });
+
+    engineRef.current.timeFreezeRemainingMs = 10000; // 10 seconds!
+    setTimeFreezeRemainingMs(10000);
+    sound.playTimeFreeze();
+
+    addEngineFloatingText(
+      engineRef.current.playerX,
+      engineRef.current.playerY - 35,
+      '⏳ ZAMAN 10 SANİYELİĞİNE DURDU!',
+      '#38bdf8'
+    );
+    addEngineParticles(engineRef.current.playerX, engineRef.current.playerY, '#38bdf8', 45);
+    return true;
+  }, [timeFreezeCharges, addEngineFloatingText, addEngineParticles]);
+
+  // Skin purchase and equip
+  const buySkin = useCallback((skinId: SnakeSkinId): boolean => {
+    const skin = SNAKE_SKINS[skinId];
+    if (!skin) return false;
+    if (unlockedSkins.includes(skinId)) {
+      setSelectedSkin(skinId);
+      engineRef.current.selectedSkin = skinId;
+      try {
+        localStorage.setItem('cybersnake_selected_skin', skinId);
+      } catch {}
+      return true;
+    }
+
+    if (coins < skin.price) return false;
+
+    updateCoins(-skin.price);
+    sound.playGoldenApple();
+
+    const updatedUnlocked = [...unlockedSkins, skinId];
+    setUnlockedSkins(updatedUnlocked);
+    setSelectedSkin(skinId);
+    engineRef.current.selectedSkin = skinId;
+
+    try {
+      localStorage.setItem('cybersnake_unlocked_skins', JSON.stringify(updatedUnlocked));
+      localStorage.setItem('cybersnake_selected_skin', skinId);
+    } catch {}
+
+    return true;
+  }, [coins, unlockedSkins, updateCoins]);
+
+  const equipSkin = useCallback((skinId: SnakeSkinId) => {
+    if (!unlockedSkins.includes(skinId)) return;
+    setSelectedSkin(skinId);
+    engineRef.current.selectedSkin = skinId;
+    try {
+      localStorage.setItem('cybersnake_selected_skin', skinId);
+    } catch {}
+  }, [unlockedSkins]);
+
+  // Gift coins helper (to easily test the 10,000 coin Time Freeze)
+  const addGiftCoins = useCallback((amount: number = 10000) => {
+    updateCoins(amount);
+    sound.playPowerUp();
+    addEngineFloatingText(
+      engineRef.current.playerX,
+      engineRef.current.playerY - 30,
+      `🎁 +${amount.toLocaleString('tr-TR')} COIN HEDİYE!`,
+      '#fbbf24'
+    );
+  }, [updateCoins, addEngineFloatingText]);
+
   // Initialize Bots
   const initBots = useCallback((diff: Difficulty): BotSnake[] => {
     const count = DIFFICULTIES[diff]?.botCount ?? 3;
@@ -312,11 +471,58 @@ export function useSnakeGame() {
     });
   }, []);
 
-  // Start new game
+  // Listen to remote multiplayer events
+  useEffect(() => {
+    const unsubPlayers = multiplayer.onPlayersChange((players) => {
+      setRemotePlayers(players);
+    });
+    const unsubChat = multiplayer.onChat((msg) => {
+      setChatMessages((prev) => [...prev.slice(-15), msg]);
+    });
+    const unsubKill = multiplayer.onKill((killEvent) => {
+      addEngineFloatingText(
+        killEvent.x,
+        killEvent.y - 20,
+        `💥 ${killEvent.killerName} avladı: ${killEvent.victimName}!`,
+        '#f43f5e'
+      );
+    });
+
+    const pingCheckInterval = setInterval(() => {
+      setMultiplayerPing(multiplayer.getPing());
+    }, 1500);
+
+    return () => {
+      unsubPlayers();
+      unsubChat();
+      unsubKill();
+      clearInterval(pingCheckInterval);
+    };
+  }, [addEngineFloatingText]);
+
+  // Start new game (supports Solo and Live Multiplayer Arena)
   const startGame = useCallback(
-    (selectedDiff?: Difficulty) => {
+    (
+      selectedDiff?: Difficulty,
+      mode: GameMode = gameMode,
+      targetRoom: string = roomId,
+      targetName: string = playerName
+    ) => {
       const diff = selectedDiff || difficulty;
       setDifficulty(diff);
+      setGameMode(mode);
+      setRoomId(targetRoom);
+      setPlayerName(targetName);
+
+      try {
+        localStorage.setItem('cybersnake_player_name', targetName);
+      } catch {}
+
+      if (mode === 'MULTIPLAYER') {
+        multiplayer.connect(targetRoom, targetName, selectedSkin);
+      } else {
+        multiplayer.disconnect();
+      }
 
       const center = ARENA_SIZE / 2;
       const initialPlayerBody: Point[] = [];
@@ -329,6 +535,7 @@ export function useSnakeGame() {
         });
       }
 
+      // If multiplayer, fewer bots needed since real humans are present
       const initialBots = initBots(diff);
 
       const initialFoods: FoodItem[] = [];
@@ -365,6 +572,8 @@ export function useSnakeGame() {
         invulnerableUntil: 0,
         durationSeconds: 0,
         lastTime: performance.now(),
+        timeFreezeRemainingMs: 0,
+        selectedSkin: selectedSkin,
       };
 
       setLives(maxPossibleLives);
@@ -378,22 +587,41 @@ export function useSnakeGame() {
       setBoostStaminaPercent(100);
       setIsBoosting(false);
       setActivePowerUps([]);
+      setTimeFreezeRemainingMs(0);
 
       setGameState('PLAYING');
       sound.playClick();
     },
-    [difficulty, maxPossibleLives, initBots, getRandomArenaPoint, createFoodItem]
+    [
+      difficulty,
+      gameMode,
+      roomId,
+      playerName,
+      maxPossibleLives,
+      initBots,
+      getRandomArenaPoint,
+      createFoodItem,
+      selectedSkin,
+    ]
   );
 
   const restartGame = useCallback(() => {
-    startGame(difficulty);
-  }, [startGame, difficulty]);
+    startGame(difficulty, gameMode, roomId, playerName);
+  }, [startGame, difficulty, gameMode, roomId, playerName]);
 
-  // Return to menu functionality (user request: "menüye gitme olsun")
+  // Return to menu functionality
   const goToMenu = useCallback(() => {
     setGameState('TITLE');
+    multiplayer.disconnect();
     sound.playClick();
   }, []);
+
+  const sendChatMessage = useCallback(
+    (text: string) => {
+      multiplayer.sendChat(text, playerName);
+    },
+    [playerName]
+  );
 
   // Steering angle input from mouse, joystick or keyboard
   const setSteerAngle = useCallback((angle: number) => {
@@ -511,6 +739,7 @@ export function useSnakeGame() {
     let fpsSampleTime = performance.now();
     let uiThrottleTime = performance.now();
     let secondTimerTime = performance.now();
+    let lastMultiplayerSendTime = 0;
 
     const loop = (now: number) => {
       // Calculate delta time capped at 33ms to avoid spiral of death
@@ -595,6 +824,21 @@ export function useSnakeGame() {
           eng.playerBody.push({ ...lastSeg });
           eng.playerLength += 1;
           eng.playerGrowthPending -= 1;
+        }
+
+        // In Multiplayer mode, broadcast our live snake position to the server (~22Hz)
+        if (gameMode === 'MULTIPLAYER' && now - lastMultiplayerSendTime >= 45) {
+          lastMultiplayerSendTime = now;
+          multiplayer.sendUpdate({
+            x: eng.playerX,
+            y: eng.playerY,
+            angle: eng.playerAngle,
+            body: eng.playerBody,
+            length: eng.playerLength,
+            score: eng.score,
+            isBoosting: eng.isBoosting,
+            isAlive: eng.lives > 0,
+          });
         }
 
         // 2. Player Food Collisions
@@ -700,45 +944,211 @@ export function useSnakeGame() {
           }
         }
 
+        // Handle 10-Second Time Freeze Countdown
+        const isTimeFrozen = eng.timeFreezeRemainingMs > 0;
+        if (isTimeFrozen) {
+          eng.timeFreezeRemainingMs = Math.max(0, eng.timeFreezeRemainingMs - dt * 1000);
+        }
+
         // 3. Bot Movement & Snake.io Combat AI
-        eng.bots.forEach((bot) => {
-          if (!bot.isAlive || bot.body.length === 0) return;
-
-          const bHead = bot.body[0];
-
-          // Find target: nearest non-poison food, or try to cut off player if aggressive
-          let targetX = center;
-          let targetY = center;
-          let minDist = Infinity;
-
-          eng.foods.forEach((f) => {
-            if (f.type === 'GREEN_POISON' || f.type === 'PURPLE_POISON') return;
-            const d = Math.hypot(f.x - bHead.x, f.y - bHead.y);
-            if (d < minDist) {
-              minDist = d;
-              targetX = f.x;
-              targetY = f.y;
+        if (isTimeFrozen) {
+          // BOTS ARE COMPLETELY FROZEN IN SOLID ICE!
+          // They cannot move or steer. Touching any part of a frozen bot shatters and eliminates it!
+          eng.bots.forEach((bot) => {
+            if (!bot.isAlive || bot.body.length === 0) return;
+            for (let s = 0; s < bot.body.length; s++) {
+              const seg = bot.body[s];
+              if (Math.hypot(eng.playerX - seg.x, eng.playerY - seg.y) < SEGMENT_RADIUS * 2.2) {
+                eliminateBot(bot.id, true);
+                break;
+              }
             }
           });
+        } else {
+          eng.bots.forEach((bot) => {
+            if (!bot.isAlive || bot.body.length === 0) return;
 
-          // Avoid arena wall
-          const botDistCenter = Math.hypot(bHead.x - center, bHead.y - center);
-          if (botDistCenter > ARENA_RADIUS - 200) {
-            targetX = center;
-            targetY = center;
-          }
+            const bHead = bot.body[0];
+            const distToPlayer = Math.hypot(eng.playerX - bHead.x, eng.playerY - bHead.y);
 
-          // Smooth turning towards target
-          bot.targetAngle = Math.atan2(targetY - bHead.y, targetX - bHead.x);
-          let bAngleDiff = bot.targetAngle - bot.angle;
-          while (bAngleDiff > Math.PI) bAngleDiff -= Math.PI * 2;
-          while (bAngleDiff < -Math.PI) bAngleDiff += Math.PI * 2;
-          const bTurn = 4.8 * dt;
-          bot.angle += Math.max(-bTurn, Math.min(bTurn, bAngleDiff));
+            // A) DESIRED TARGET EVALUATION (Tactical Food Seeking vs Predatory Interception)
+            let desiredTargetX = center;
+            let desiredTargetY = center;
+            let highestTargetScore = -Infinity;
 
-          const bSpeed = diffCfg.botSpeed;
-          const nextHeadX = bHead.x + Math.cos(bot.angle) * bSpeed * dt;
-          const nextHeadY = bHead.y + Math.sin(bot.angle) * bSpeed * dt;
+            // 1. Food Evaluation with Tactical Value Weighting
+            eng.foods.forEach((f) => {
+              const isPoison = f.type === 'GREEN_POISON' || f.type === 'PURPLE_POISON';
+              if (isPoison) {
+                // High difficulty bots with high poison awareness actively filter out poison
+                if (Math.random() < diffCfg.aiPoisonAwareness) return;
+              }
+
+              const d = Math.hypot(f.x - bHead.x, f.y - bHead.y);
+              if (d > 750) return;
+
+              let typeWeight = 1.0;
+              if (f.type === 'BOT_REMAINS') typeWeight = 3.5;
+              else if (f.type === 'LAHMACUN') typeWeight = 3.0;
+              else if (f.type === 'GOLDEN_APPLE') typeWeight = 2.5;
+              else if (f.type === 'ENERGY_CORE') typeWeight = 2.0;
+
+              const score = (1000 / (d + 20)) * typeWeight;
+              if (score > highestTargetScore) {
+                highestTargetScore = score;
+                desiredTargetX = f.x;
+                desiredTargetY = f.y;
+              }
+            });
+
+            // 2. Predatory Player Interception (Snake.io Cut-Off Tactic)
+            // As difficulty increases, bots prioritize intercepting and cutting off the player
+            const shouldHuntPlayer =
+              diffCfg.aiAggression > 0.15 &&
+              distToPlayer < 650 &&
+              !eng.isInvulnerable;
+
+            let isHunting = false;
+            if (shouldHuntPlayer) {
+              const playerSpd = eng.isBoosting ? diffCfg.baseSpeed * 1.85 : diffCfg.baseSpeed;
+              const leadTime = diffCfg.aiPredictiveCutoff * Math.min(1.2, distToPlayer / 260);
+
+              // Calculate predicted intercept point ahead of player's head
+              const interceptX = eng.playerX + Math.cos(eng.playerAngle) * playerSpd * leadTime;
+              const interceptY = eng.playerY + Math.sin(eng.playerAngle) * playerSpd * leadTime;
+
+              // Check if intercept point is within arena boundaries
+              const distFromCenter = Math.hypot(interceptX - center, interceptY - center);
+              if (distFromCenter < ARENA_RADIUS - 120) {
+                const huntScore = (1000 / (distToPlayer + 50)) * (diffCfg.aiAggression * 4.0);
+                if (huntScore > highestTargetScore) {
+                  desiredTargetX = interceptX;
+                  desiredTargetY = interceptY;
+                  isHunting = true;
+                }
+              }
+            }
+
+            // B) MULTI-WHISKER RAYCASTING CONTEXT STEERING (Obstacle & Crash Avoidance)
+            // Cast sensory rays across an angular fan around current heading
+            const baseTargetAngle = Math.atan2(desiredTargetY - bHead.y, desiredTargetX - bHead.x);
+            const rayCount = diffCfg.aiRayCount;
+            const maxSpread = Math.PI * 0.75; // 135-degree scan arc
+            const avoidDist = diffCfg.aiAvoidanceDistance;
+
+            let bestAngle = baseTargetAngle;
+            let bestAngleScore = -Infinity;
+
+            for (let r = 0; r < rayCount; r++) {
+              const offsetAngle = rayCount > 1
+                ? -maxSpread / 2 + (r / (rayCount - 1)) * maxSpread
+                : 0;
+              const testAngle = bot.angle + offsetAngle;
+
+              // Sample point along this sensory whisker
+              const sampleX = bHead.x + Math.cos(testAngle) * avoidDist;
+              const sampleY = bHead.y + Math.sin(testAngle) * avoidDist;
+
+              // 1. Goal alignment score (desire to face target)
+              let rayScore = Math.cos(testAngle - baseTargetAngle) * 35;
+
+              // 2. Arena wall avoidance
+              const sampleDistCenter = Math.hypot(sampleX - center, sampleY - center);
+              if (sampleDistCenter > ARENA_RADIUS - 60) {
+                rayScore -= 2000;
+              } else if (sampleDistCenter > ARENA_RADIUS - 140) {
+                rayScore -= 300 * ((sampleDistCenter - (ARENA_RADIUS - 140)) / 80);
+              }
+
+              // 3. Player body collision avoidance (Bots avoid hitting player's body and dying!)
+              for (let s = 1; s < eng.playerBody.length; s += 2) {
+                const seg = eng.playerBody[s];
+                const d = Math.hypot(sampleX - seg.x, sampleY - seg.y);
+                if (d < SEGMENT_RADIUS * 2.2) {
+                  rayScore -= 5000; // Fatal collision danger!
+                } else if (d < avoidDist) {
+                  rayScore -= (avoidDist - d) * 12;
+                }
+              }
+
+              // 4. Other bot bodies avoidance
+              eng.bots.forEach((other) => {
+                if (other.id === bot.id || !other.isAlive) return;
+                for (let s = 1; s < other.body.length; s += 2) {
+                  const seg = other.body[s];
+                  const d = Math.hypot(sampleX - seg.x, sampleY - seg.y);
+                  if (d < SEGMENT_RADIUS * 2.2) {
+                    rayScore -= 5000;
+                  } else if (d < avoidDist) {
+                    rayScore -= (avoidDist - d) * 8;
+                  }
+                }
+              });
+
+              // 5. Own body avoidance (Long bots don't eat their own tail/coils)
+              if (bot.body.length > 8) {
+                for (let s = 6; s < bot.body.length; s += 3) {
+                  const seg = bot.body[s];
+                  const d = Math.hypot(sampleX - seg.x, sampleY - seg.y);
+                  if (d < SEGMENT_RADIUS * 2.2) {
+                    rayScore -= 4000;
+                  } else if (d < avoidDist * 0.7) {
+                    rayScore -= (avoidDist * 0.7 - d) * 10;
+                  }
+                }
+              }
+
+              // 6. Poison food avoidance
+              if (diffCfg.aiPoisonAwareness > 0.3) {
+                eng.foods.forEach((f) => {
+                  if (f.type !== 'GREEN_POISON' && f.type !== 'PURPLE_POISON') return;
+                  const d = Math.hypot(sampleX - f.x, sampleY - f.y);
+                  if (d < 35) {
+                    rayScore -= diffCfg.aiPoisonAwareness * 600;
+                  }
+                });
+              }
+
+              if (rayScore > bestAngleScore) {
+                bestAngleScore = rayScore;
+                bestAngle = testAngle;
+              }
+            }
+
+            // C) TACTICAL TURBO SPRINT / BOOST
+            // High difficulty bots tactically boost to execute cut-off kills or escape
+            let isBotBoosting = false;
+            if (diffCfg.aiBoostChance > 0 && Math.random() < diffCfg.aiBoostChance) {
+              if (isHunting && distToPlayer < 280 && distToPlayer > 60) {
+                isBotBoosting = true;
+              } else if (bestAngleScore < -100) {
+                // Trapped or cornered -> emergency turbo sprint
+                isBotBoosting = true;
+              }
+            }
+            bot.isBoosting = isBotBoosting;
+
+            // D) SMOOTH STEERING TO BEST ANGLE
+            bot.targetAngle = bestAngle;
+            let bAngleDiff = bot.targetAngle - bot.angle;
+            while (bAngleDiff > Math.PI) bAngleDiff -= Math.PI * 2;
+            while (bAngleDiff < -Math.PI) bAngleDiff += Math.PI * 2;
+
+            const bTurnRate = diffCfg.aiTurnSpeed * dt;
+            bot.angle += Math.max(-bTurnRate, Math.min(bTurnRate, bAngleDiff));
+
+            // E) MOVE BOT HEAD
+            const bCurrentSpeed = isBotBoosting
+              ? diffCfg.botSpeed * 1.55
+              : diffCfg.botSpeed;
+
+            const nextHeadX = bHead.x + Math.cos(bot.angle) * bCurrentSpeed * dt;
+            const nextHeadY = bHead.y + Math.sin(bot.angle) * bCurrentSpeed * dt;
+
+            // Spawn boost sparks when bot is sprinting
+            if (isBotBoosting && Math.random() < 0.25) {
+              addEngineParticles(bHead.x, bHead.y, bot.headColor, 1);
+            }
 
           // Check if Bot crashes into Player Body (Snake.io core rule: BOT EXPLODES!)
           let botCrashedIntoPlayer = false;
@@ -810,18 +1220,60 @@ export function useSnakeGame() {
             bot.growthPending -= 1;
           }
         });
+        }
 
-        // 4. Check if Player's Head hits a Bot's Body
-        eng.bots.forEach((bot) => {
-          if (!bot.isAlive) return;
-          for (let s = 1; s < bot.body.length; s++) {
-            const seg = bot.body[s];
-            if (Math.hypot(eng.playerX - seg.x, eng.playerY - seg.y) < SEGMENT_RADIUS * 1.5) {
-              handlePlayerDamage(`BOT GÖVDESİ (${bot.name})`);
-              break;
+        // 4. Check if Player's Head hits a Bot's Body (only when not frozen)
+        if (!isTimeFrozen) {
+          eng.bots.forEach((bot) => {
+            if (!bot.isAlive) return;
+            for (let s = 1; s < bot.body.length; s++) {
+              const seg = bot.body[s];
+              if (Math.hypot(eng.playerX - seg.x, eng.playerY - seg.y) < SEGMENT_RADIUS * 1.5) {
+                handlePlayerDamage(`BOT GÖVDESİ (${bot.name})`);
+                break;
+              }
+            }
+          });
+
+          // 4b. Check if Player's Head hits a Remote Human Player's Body
+          if (gameMode === 'MULTIPLAYER') {
+            const remotes = multiplayer.getRemotePlayers();
+            for (const rp of remotes) {
+              if (!rp.isAlive || !rp.body || rp.body.length < 2) continue;
+              for (let s = 1; s < rp.body.length; s++) {
+                const seg = rp.body[s];
+                if (Math.hypot(eng.playerX - seg.x, eng.playerY - seg.y) < SEGMENT_RADIUS * 1.5) {
+                  handlePlayerDamage(`GERÇEK OYUNCU (${rp.name})`);
+                  break;
+                }
+              }
             }
           }
-        });
+        }
+
+        // 4c. Check if a Remote Human Player's Head hits OUR Player's Body (We cut them off!)
+        if (gameMode === 'MULTIPLAYER') {
+          const remotes = multiplayer.getRemotePlayers();
+          for (const rp of remotes) {
+            if (!rp.isAlive || !rp.body || rp.body.length === 0) continue;
+            const rHead = rp.body[0] || { x: rp.x, y: rp.y };
+            for (let s = 1; s < eng.playerBody.length; s++) {
+              const mySeg = eng.playerBody[s];
+              if (Math.hypot(rHead.x - mySeg.x, rHead.y - mySeg.y) < SEGMENT_RADIUS * 1.5) {
+                multiplayer.sendKill(rp.id, rp.name, multiplayer.getMyPlayerId() || 'me', playerName, rHead.x, rHead.y);
+                sound.playBotKill();
+                updateCoins(35);
+                eng.score += 350;
+                eng.playerGrowthPending += 10;
+                eng.botKillsCount += 1;
+                setBotKillsCount(eng.botKillsCount);
+                addEngineParticles(rHead.x, rHead.y, '#f59e0b', 35);
+                addEngineFloatingText(rHead.x, rHead.y - 35, `👑 GERÇEK OYUNCU AVLANDI: ${rp.name}! +350 PUAN!`, '#f59e0b');
+                break;
+              }
+            }
+          }
+        }
 
         // 5. Magnet Power-up pull
         const hasMagnet = eng.activePowerUps.some((p) => p.type === 'MAGNET');
@@ -909,22 +1361,36 @@ export function useSnakeGame() {
         setLength(eng.playerLength);
         setBoostStaminaPercent(eng.boostStamina);
         setCombo(eng.combo);
+        setTimeFreezeRemainingMs(Math.round(eng.timeFreezeRemainingMs));
 
         // Calculate Arena Rankings (Snake.io leaderboard)
+        const remoteStandings: LiveStandingItem[] = (gameMode === 'MULTIPLAYER' ? multiplayer.getRemotePlayers() : []).map((rp) => ({
+          name: rp.name,
+          score: rp.score,
+          color: '#f43f5e',
+          isPlayer: false,
+          isRealHuman: true,
+          isAlive: rp.isAlive,
+          length: rp.length,
+        }));
+
         const standings: LiveStandingItem[] = [
           {
-            name: 'Sen',
+            name: playerName ? `${playerName} (Sen)` : 'Sen',
             score: eng.score,
             color: '#00e5ff',
             isPlayer: true,
+            isRealHuman: true,
             isAlive: true,
             length: eng.playerLength,
           },
+          ...remoteStandings,
           ...eng.bots.map((b) => ({
             name: b.name,
             score: b.score,
             color: b.color,
             isPlayer: false,
+            isRealHuman: false,
             isAlive: b.isAlive,
             length: b.length,
           })),
@@ -944,6 +1410,8 @@ export function useSnakeGame() {
   }, [
     gameState,
     difficulty,
+    gameMode,
+    playerName,
     upgrades,
     handlePlayerDamage,
     eliminateBot,
@@ -1001,6 +1469,13 @@ export function useSnakeGame() {
         return;
       }
 
+      if (e.key === 't' || e.key === 'T') {
+        if (gameState === 'PLAYING') {
+          activateTimeFreeze();
+        }
+        return;
+      }
+
       if (gameState !== 'PLAYING') return;
 
       // WASD / Arrow directional heading
@@ -1027,7 +1502,7 @@ export function useSnakeGame() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, restartGame, setBoosting]);
+  }, [gameState, restartGame, setBoosting, activateTimeFreeze]);
 
   // Submit high score
   const submitHighScore = useCallback(
@@ -1065,6 +1540,10 @@ export function useSnakeGame() {
     isUpgradeModalOpen,
     coins,
     upgrades,
+    timeFreezeCharges,
+    timeFreezeRemainingMs,
+    selectedSkin,
+    unlockedSkins,
     currentFps,
     playerRank,
     totalSnakes,
@@ -1073,12 +1552,27 @@ export function useSnakeGame() {
     activePowerUps,
     liveStandings,
     engineRef,
+    gameMode,
+    setGameMode,
+    roomId,
+    setRoomId,
+    playerName,
+    setPlayerName,
+    remotePlayers,
+    chatMessages,
+    sendChatMessage,
+    multiplayerPing,
     startGame,
     restartGame,
     goToMenu,
     setSteerAngle,
     setBoosting,
     buyUpgrade,
+    buyTimeFreeze,
+    activateTimeFreeze,
+    buySkin,
+    equipSkin,
+    addGiftCoins,
     submitHighScore,
     setIsLeaderboardOpen,
     setIsUpgradeModalOpen,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trophy, RotateCcw, Award, CheckCircle2, ArrowRight, Home } from 'lucide-react';
+import { Trophy, RotateCcw, Award, CheckCircle2, ArrowRight, Home, ShoppingBag } from 'lucide-react';
 import { Difficulty } from '../types/game';
 
 interface GameOverModalProps {
@@ -14,6 +14,7 @@ interface GameOverModalProps {
   onSaveScore: (playerName: string) => void;
   onPlayAgain: () => void;
   onOpenLeaderboard: () => void;
+  onOpenShop?: () => void;
   onGoToMenu: () => void;
 }
 
@@ -27,6 +28,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   onSaveScore,
   onPlayAgain,
   onOpenLeaderboard,
+  onOpenShop,
   onGoToMenu,
 }) => {
   const [playerName, setPlayerName] = useState('');
@@ -132,11 +134,21 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         <div className="flex flex-col gap-2.5">
           <button
             onClick={onPlayAgain}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-sm uppercase tracking-wider shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-sm uppercase tracking-wider shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Tekrar Oyna</span>
           </button>
+
+          {onOpenShop && (
+            <button
+              onClick={onOpenShop}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
+            >
+              <ShoppingBag className="w-4 h-4 text-amber-400" />
+              <span>🛒 Markete Git (Zamanı Dondur & Yükseltmeler)</span>
+            </button>
+          )}
 
           <div className="grid grid-cols-2 gap-2">
             <button
