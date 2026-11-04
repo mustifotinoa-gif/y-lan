@@ -320,7 +320,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
                 <>
                   <span className="text-emerald-400 font-semibold">🛡️ Çok Oyunculu Kuralı:</span>
                   <span className="text-emerald-300 font-bold font-mono">
-                    Sıfır Bot · Sadece Gerçek İnsanlar
+                    Sıfır Bot · Adil PvP (Zaman Durdurma Kapalı)
                   </span>
                 </>
               ) : (
@@ -370,7 +370,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             <span>·</span>
             <span>Space / Dokun: Turbo</span>
             <span>·</span>
-            <span>T: Zaman Durdur (10s)</span>
+            <span>G: Zaman Durdur (10s · 150s Bekleme)</span>
             <span>·</span>
             <span>U: Market</span>
           </div>

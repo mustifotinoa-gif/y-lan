@@ -39,6 +39,8 @@ interface HUDProps {
   isMuted: boolean;
   timeFreezeCharges?: number;
   timeFreezeRemainingMs?: number;
+  timeFreezeCooldownMs?: number;
+  isMultiplayer?: boolean;
   onActivateTimeFreeze?: () => void;
   onTogglePause: () => void;
   onToggleMute: () => void;
@@ -68,6 +70,8 @@ export const HUD: React.FC<HUDProps> = ({
   isMuted,
   timeFreezeCharges = 0,
   timeFreezeRemainingMs = 0,
+  timeFreezeCooldownMs = 0,
+  isMultiplayer = false,
   onActivateTimeFreeze,
   onTogglePause,
   onToggleMute,
@@ -159,39 +163,49 @@ export const HUD: React.FC<HUDProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Time Freeze Trigger / Status Button */}
-          <button
-            onClick={() => {
-              if (timeFreezeRemainingMs <= 0) {
-                if (timeFreezeCharges > 0 && onActivateTimeFreeze) {
-                  onActivateTimeFreeze();
-                } else {
-                  onOpenShop();
+          {/* Time Freeze Trigger / Status Button (Solo Mode Only) */}
+          {!isMultiplayer && (
+            <button
+              onClick={() => {
+                if (timeFreezeRemainingMs <= 0) {
+                  if (timeFreezeCharges > 0 && onActivateTimeFreeze) {
+                    onActivateTimeFreeze();
+                  } else {
+                    onOpenShop();
+                  }
                 }
+              }}
+              title={
+                timeFreezeRemainingMs > 0
+                  ? `Zaman Dondu: ${(timeFreezeRemainingMs / 1000).toFixed(1)}s`
+                  : timeFreezeCooldownMs > 0
+                  ? `⏳ Bekleme Süresi: ${Math.ceil(timeFreezeCooldownMs / 1000)}s sonra hazır!`
+                  : timeFreezeCharges > 0
+                  ? `Zamanı Dondur (10s) - [G] veya [T] tuşuna basın`
+                  : 'Zaman Durdurma Markette! (10.000 Coin)'
               }
-            }}
-            title={
-              timeFreezeRemainingMs > 0
-                ? `Zaman Dondu: ${(timeFreezeRemainingMs / 1000).toFixed(1)}s`
-                : timeFreezeCharges > 0
-                ? `Zamanı Dondur (10s) - [T] Tuşu veya Tıkla (x${timeFreezeCharges})`
-                : 'Zaman Durdurma Markette! (10.000 Coin)'
-            }
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-bold transition-all active:scale-95 cursor-pointer ${
-              timeFreezeRemainingMs > 0
-                ? 'bg-cyan-400 text-slate-950 shadow-[0_0_12px_rgba(34,211,238,0.8)] animate-pulse'
-                : timeFreezeCharges > 0
-                ? 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/60 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
-                : 'bg-slate-800/80 hover:bg-slate-800 text-slate-400 border border-slate-700/60'
-            }`}
-          >
-            <Hourglass className={`w-3.5 h-3.5 ${timeFreezeRemainingMs > 0 ? 'animate-spin text-slate-950' : timeFreezeCharges > 0 ? 'text-cyan-400' : 'text-slate-400'}`} />
-            {timeFreezeRemainingMs > 0 ? (
-              <span className="font-extrabold text-[11px]">{(timeFreezeRemainingMs / 1000).toFixed(1)}s</span>
-            ) : (
-              <span className="text-[11px]">x{timeFreezeCharges}</span>
-            )}
-          </button>
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-bold transition-all active:scale-95 cursor-pointer ${
+                timeFreezeRemainingMs > 0
+                  ? 'bg-cyan-400 text-slate-950 shadow-[0_0_12px_rgba(34,211,238,0.8)] animate-pulse'
+                  : timeFreezeCooldownMs > 0
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 opacity-90'
+                  : timeFreezeCharges > 0
+                  ? 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/60 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
+                  : 'bg-slate-800/80 hover:bg-slate-800 text-slate-400 border border-slate-700/60'
+              }`}
+            >
+              <Hourglass className={`w-3.5 h-3.5 ${timeFreezeRemainingMs > 0 ? 'animate-spin text-slate-950' : timeFreezeCooldownMs > 0 ? 'text-amber-400 animate-pulse' : timeFreezeCharges > 0 ? 'text-cyan-400' : 'text-slate-400'}`} />
+              {timeFreezeRemainingMs > 0 ? (
+                <span className="font-extrabold text-[11px]">{(timeFreezeRemainingMs / 1000).toFixed(1)}s</span>
+              ) : timeFreezeCooldownMs > 0 ? (
+                <span className="font-bold text-[10px] text-amber-300">{Math.ceil(timeFreezeCooldownMs / 1000)}s</span>
+              ) : timeFreezeCharges > 0 ? (
+                <span className="text-[11px] text-cyan-300">[G] HAZIR</span>
+              ) : (
+                <span className="text-[11px]">MARKET</span>
+              )}
+            </button>
+          )}
 
           {/* Shop Button */}
           <button

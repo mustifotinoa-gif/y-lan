@@ -46,6 +46,7 @@ export default function App() {
     engineRef,
     timeFreezeCharges,
     timeFreezeRemainingMs,
+    timeFreezeCooldownMs,
     selectedSkin,
     unlockedSkins,
     gameMode,
@@ -305,6 +306,8 @@ export default function App() {
               isMuted={isMuted}
               timeFreezeCharges={timeFreezeCharges}
               timeFreezeRemainingMs={timeFreezeRemainingMs}
+              timeFreezeCooldownMs={timeFreezeCooldownMs}
+              isMultiplayer={gameMode === 'MULTIPLAYER'}
               onActivateTimeFreeze={activateTimeFreeze}
               onTogglePause={togglePause}
               onToggleMute={toggleMute}
@@ -351,6 +354,8 @@ export default function App() {
               isBoosting={isBoosting}
               timeFreezeCharges={timeFreezeCharges}
               timeFreezeRemainingMs={timeFreezeRemainingMs}
+              timeFreezeCooldownMs={timeFreezeCooldownMs}
+              isMultiplayer={gameMode === 'MULTIPLAYER'}
               onActivateTimeFreeze={activateTimeFreeze}
             />
           </div>
@@ -365,7 +370,7 @@ export default function App() {
           <span>·</span>
           <span>U: Market</span>
           <span>·</span>
-          <span>T: Zaman Durdur</span>
+          <span>G / T: Zaman Durdur (10s)</span>
           <span>·</span>
           <span className="text-emerald-400 font-mono">120 FPS</span>
         </div>

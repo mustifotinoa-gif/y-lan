@@ -9,6 +9,8 @@ interface VirtualControlsProps {
   isBoosting: boolean;
   timeFreezeCharges?: number;
   timeFreezeRemainingMs?: number;
+  timeFreezeCooldownMs?: number;
+  isMultiplayer?: boolean;
   onActivateTimeFreeze?: () => void;
 }
 
@@ -20,6 +22,8 @@ export const VirtualDPad: React.FC<VirtualControlsProps> = ({
   isBoosting,
   timeFreezeCharges = 0,
   timeFreezeRemainingMs = 0,
+  timeFreezeCooldownMs = 0,
+  isMultiplayer = false,
   onActivateTimeFreeze,
 }) => {
   const joystickRef = useRef<HTMLDivElement | null>(null);
@@ -184,32 +188,46 @@ export const VirtualDPad: React.FC<VirtualControlsProps> = ({
 
           {/* Action Buttons on the right: Turbo Sprint & Shop */}
           <div className="flex items-center gap-3">
-            {/* Time Freeze Mobile Button */}
-            <button
-              onClick={() => {
-                triggerHaptic();
-                if (timeFreezeRemainingMs <= 0) {
-                  if (timeFreezeCharges > 0 && onActivateTimeFreeze) {
-                    onActivateTimeFreeze();
-                  } else {
-                    onOpenShop();
+            {/* Time Freeze Mobile Button (Solo Mode Only) */}
+            {!isMultiplayer && (
+              <button
+                onClick={() => {
+                  triggerHaptic();
+                  if (timeFreezeRemainingMs <= 0) {
+                    if (timeFreezeCharges > 0 && onActivateTimeFreeze) {
+                      onActivateTimeFreeze();
+                    } else {
+                      onOpenShop();
+                    }
                   }
+                }}
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer ${
+                  timeFreezeRemainingMs > 0
+                    ? 'bg-cyan-400 text-slate-950 ring-2 ring-cyan-200 animate-pulse'
+                    : timeFreezeCooldownMs > 0
+                    ? 'bg-amber-500/15 border-2 border-amber-500/40 text-amber-300 opacity-90'
+                    : timeFreezeCharges > 0
+                    ? 'bg-cyan-500/20 border-2 border-cyan-400/80 text-cyan-300 shadow-cyan-500/25'
+                    : 'bg-slate-900/80 border border-slate-700/80 text-slate-400'
+                }`}
+                title={
+                  timeFreezeCooldownMs > 0
+                    ? `Bekleme Süresi: ${Math.ceil(timeFreezeCooldownMs / 1000)}s`
+                    : 'Zamanı Dondur (10s) - [G] Tuşu'
                 }
-              }}
-              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer ${
-                timeFreezeRemainingMs > 0
-                  ? 'bg-cyan-400 text-slate-950 ring-2 ring-cyan-200 animate-pulse'
-                  : timeFreezeCharges > 0
-                  ? 'bg-cyan-500/20 border-2 border-cyan-400/80 text-cyan-300 shadow-cyan-500/25'
-                  : 'bg-slate-900/80 border border-slate-700/80 text-slate-400'
-              }`}
-              title="Zamanı Dondur (10s)"
-            >
-              <Hourglass className={`w-4 h-4 mb-0.5 ${timeFreezeRemainingMs > 0 ? 'animate-spin' : ''}`} />
-              <span className="text-[7.5px] font-mono font-bold">
-                {timeFreezeRemainingMs > 0 ? `${(timeFreezeRemainingMs / 1000).toFixed(0)}s` : `DONDUR (x${timeFreezeCharges})`}
-              </span>
-            </button>
+              >
+                <Hourglass className={`w-4 h-4 mb-0.5 ${timeFreezeRemainingMs > 0 ? 'animate-spin' : timeFreezeCooldownMs > 0 ? 'text-amber-400 animate-pulse' : ''}`} />
+                <span className="text-[7.5px] font-mono font-bold">
+                  {timeFreezeRemainingMs > 0
+                    ? `${(timeFreezeRemainingMs / 1000).toFixed(0)}s`
+                    : timeFreezeCooldownMs > 0
+                    ? `${Math.ceil(timeFreezeCooldownMs / 1000)}s`
+                    : timeFreezeCharges > 0
+                    ? 'DONDUR (G)'
+                    : 'MARKET'}
+                </span>
+              </button>
+            )}
 
             {/* Quick Shop Button */}
             <button

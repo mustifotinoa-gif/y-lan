@@ -67,6 +67,7 @@ interface GameEngineState {
   durationSeconds: number;
   lastTime: number;
   timeFreezeRemainingMs: number;
+  timeFreezeCooldownMs: number;
   selectedSkin: SnakeSkinId;
 }
 
@@ -129,6 +130,7 @@ export function useSnakeGame() {
   });
 
   const [timeFreezeRemainingMs, setTimeFreezeRemainingMs] = useState<number>(0);
+  const [timeFreezeCooldownMs, setTimeFreezeCooldownMs] = useState<number>(0);
 
   // Snake Skin selection persistent state
   const [selectedSkin, setSelectedSkin] = useState<SnakeSkinId>(() => {
@@ -200,6 +202,7 @@ export function useSnakeGame() {
     durationSeconds: 0,
     lastTime: performance.now(),
     timeFreezeRemainingMs: 0,
+    timeFreezeCooldownMs: 0,
     selectedSkin: 'SKIN_DEFAULT',
   });
 
@@ -337,57 +340,91 @@ export function useSnakeGame() {
     });
   }, []);
 
-  // 10,000 Coin Time Freeze purchase (requested explicitly by user!)
+  // 10,000 Coin Time Freeze purchase (single purchase limit as requested)
   const buyTimeFreeze = useCallback((): boolean => {
     const PRICE = 10000;
+    if (timeFreezeCharges > 0) {
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        '⚠️ Zaten satın aldınız!',
+        '#f59e0b'
+      );
+      return false;
+    }
+
     if (coins < PRICE) return false;
 
     updateCoins(-PRICE);
     sound.playPowerUp();
 
-    setTimeFreezeCharges((prev) => {
-      const next = prev + 1;
-      try {
-        localStorage.setItem('cybersnake_time_freeze_charges', String(next));
-      } catch {}
-      return next;
-    });
+    setTimeFreezeCharges(1);
+    try {
+      localStorage.setItem('cybersnake_time_freeze_charges', '1');
+    } catch {}
 
     addEngineFloatingText(
       engineRef.current.playerX,
       engineRef.current.playerY - 30,
-      '⏳ ZAMAN DURDURMA ALINDI! (+1 Hak)',
+      '⏳ ZAMAN DURDURMA ALINDI! (10 Saniye)',
       '#38bdf8'
     );
     return true;
-  }, [coins, updateCoins, addEngineFloatingText]);
+  }, [coins, timeFreezeCharges, updateCoins, addEngineFloatingText]);
 
-  // Activate 10-second Time Freeze!
+  // Activate 10-second Time Freeze with 150-second cooldown! (Solo mode only)
   const activateTimeFreeze = useCallback((): boolean => {
-    if (timeFreezeCharges <= 0) return false;
+    // User request: No time freeze in multiplayer mode!
+    if (gameMode === 'MULTIPLAYER') {
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        '⚠️ Çok oyunculu modda Zaman Durdurma kapalıdır!',
+        '#f59e0b'
+      );
+      return false;
+    }
+
+    if (timeFreezeCharges <= 0) {
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        '🛒 Zaman Durdurma için Marketi açın! (U)',
+        '#38bdf8'
+      );
+      return false;
+    }
+
     if (engineRef.current.timeFreezeRemainingMs > 0) return false;
 
-    setTimeFreezeCharges((prev) => {
-      const next = Math.max(0, prev - 1);
-      try {
-        localStorage.setItem('cybersnake_time_freeze_charges', String(next));
-      } catch {}
-      return next;
-    });
+    if (engineRef.current.timeFreezeCooldownMs > 0) {
+      const secLeft = Math.ceil(engineRef.current.timeFreezeCooldownMs / 1000);
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        `⏳ Bekleme Süresi: ${secLeft} sn sonra tekrar kullanılabilir!`,
+        '#f59e0b'
+      );
+      return false;
+    }
 
-    engineRef.current.timeFreezeRemainingMs = 10000; // 10 seconds!
+    // Activate freeze for 10 seconds!
+    engineRef.current.timeFreezeRemainingMs = 10000;
+    // 150-second cooldown as requested!
+    engineRef.current.timeFreezeCooldownMs = 150000;
     setTimeFreezeRemainingMs(10000);
+    setTimeFreezeCooldownMs(150000);
     sound.playTimeFreeze();
 
     addEngineFloatingText(
       engineRef.current.playerX,
       engineRef.current.playerY - 35,
-      '⏳ ZAMAN 10 SANİYELİĞİNE DURDU!',
+      '⏳ ZAMAN 10 SANİYELİĞİNE DURDU! (150s Bekleme Süresi)',
       '#38bdf8'
     );
     addEngineParticles(engineRef.current.playerX, engineRef.current.playerY, '#38bdf8', 45);
     return true;
-  }, [timeFreezeCharges, addEngineFloatingText, addEngineParticles]);
+  }, [timeFreezeCharges, gameMode, addEngineFloatingText, addEngineParticles]);
 
   // Skin purchase and equip
   const buySkin = useCallback((skinId: SnakeSkinId): boolean => {
@@ -561,6 +598,7 @@ export function useSnakeGame() {
         durationSeconds: 0,
         lastTime: performance.now(),
         timeFreezeRemainingMs: 0,
+        timeFreezeCooldownMs: 0,
         selectedSkin: selectedSkin,
       };
 
@@ -936,6 +974,11 @@ export function useSnakeGame() {
         const isTimeFrozen = eng.timeFreezeRemainingMs > 0;
         if (isTimeFrozen) {
           eng.timeFreezeRemainingMs = Math.max(0, eng.timeFreezeRemainingMs - dt * 1000);
+        }
+
+        // Handle 150-Second Time Freeze Cooldown
+        if (eng.timeFreezeCooldownMs > 0) {
+          eng.timeFreezeCooldownMs = Math.max(0, eng.timeFreezeCooldownMs - dt * 1000);
         }
 
         // 3. Bot Movement & Snake.io Combat AI
@@ -1354,6 +1397,7 @@ export function useSnakeGame() {
         setBoostStaminaPercent(eng.boostStamina);
         setCombo(eng.combo);
         setTimeFreezeRemainingMs(Math.round(eng.timeFreezeRemainingMs));
+        setTimeFreezeCooldownMs(Math.round(eng.timeFreezeCooldownMs));
 
         // Calculate Arena Rankings (Snake.io leaderboard)
         const remoteStandings: LiveStandingItem[] = (gameMode === 'MULTIPLAYER' ? multiplayer.getRemotePlayers() : []).map((rp) => ({
@@ -1465,7 +1509,7 @@ export function useSnakeGame() {
         return;
       }
 
-      if (e.key === 't' || e.key === 'T') {
+      if (e.key === 'g' || e.key === 'G' || e.key === 't' || e.key === 'T') {
         if (gameState === 'PLAYING') {
           activateTimeFreeze();
         }
@@ -1538,6 +1582,7 @@ export function useSnakeGame() {
     upgrades,
     timeFreezeCharges,
     timeFreezeRemainingMs,
+    timeFreezeCooldownMs,
     selectedSkin,
     unlockedSkins,
     currentFps,

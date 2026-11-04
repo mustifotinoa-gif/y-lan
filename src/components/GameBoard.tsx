@@ -740,8 +740,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
       ctx.restore();
 
-      // 10. Time Freeze Screen Frost & Banner
-      if (eng.timeFreezeRemainingMs > 0) {
+      // 10. Time Freeze Screen Frost & Banner (Solo mode only)
+      if (!isMultiplayer && eng.timeFreezeRemainingMs > 0) {
         ctx.save();
         // Pulsing Frost Vignette around edges
         const frostVignette = ctx.createRadialGradient(

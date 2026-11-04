@@ -117,8 +117,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const skinList = Object.values(SNAKE_SKINS);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in select-none">
-      <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-cyan-500/40 rounded-2xl sm:rounded-3xl shadow-[0_0_50px_rgba(6,182,212,0.25)] overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fade-in select-none">
+      <div className="relative w-full max-w-4xl bg-slate-900 border-2 border-cyan-500/40 rounded-2xl sm:rounded-3xl shadow-[0_0_60px_rgba(6,182,212,0.3)] overflow-hidden flex flex-col h-[90vh] max-h-[760px]">
         {/* Header Bar */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-800 bg-slate-950/90 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -219,10 +219,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                           Efsanevi Eşya
                         </span>
                         <span className="text-[10px] text-amber-300 font-mono font-bold bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                          Süre: 10 Saniye
+                          Süre: 10sn · Bekleme: 150sn
                         </span>
                         <span className="text-[10px] text-emerald-300 font-mono font-bold bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                          Envanter: x{timeFreezeCharges}
+                          {timeFreezeCharges > 0 ? '✓ Sahipsiniz' : 'Satın Alınabilir'}
                         </span>
                       </div>
 
@@ -231,36 +231,54 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                       </h3>
 
                       <p className="text-xs text-slate-300 mt-1 max-w-md leading-relaxed">
-                        Arenadaki tüm botları <strong className="text-cyan-300">10 saniye</strong> boyunca kaskatı buz kütlesine çevirir. Donmuş botlar hareket edemez, siz ise üzerlerine sürerek onları tek dokunuşla parçalayabilir ve devasa yemek ziyafeti çekebilirsiniz!
+                        Arenadaki tüm botları <strong className="text-cyan-300">10 saniye</strong> boyunca kaskatı buz kütlesine çevirir. Donmuş botlar hareket edemez, siz ise üzerlerine sürerek onları tek dokunuşla parçalayabilirsiniz!
                       </p>
 
                       <div className="flex items-center gap-2 mt-2 text-[11px] text-cyan-400/90 font-mono">
                         <Info className="w-3.5 h-3.5" />
-                        <span>Kullanım: Oyun içinde <strong>[T]</strong> tuşuna basın veya ekrandaki <strong>⏳ Dondur</strong> butonuna dokunun.</span>
+                        <span>Kullanım: Oyun içinde <strong>[G]</strong> tuşuna basın. Kullandıktan sonra <strong>150 saniye</strong> bekleme süresi vardır.</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Buy Button */}
+                  {/* Buy Button / Already Purchased Status */}
                   <div className="shrink-0 w-full sm:w-auto flex flex-col items-end gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onBuyTimeFreeze()}
-                      disabled={coins < 10000}
-                      className={`w-full sm:w-auto px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer ${
-                        coins >= 10000
-                          ? 'bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 shadow-cyan-500/30 active:scale-95'
-                          : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-80'
-                      }`}
-                    >
-                      <Coins className="w-4 h-4" />
-                      <span>10.000 Coin ile Satın Al</span>
-                      <ArrowUpRight className="w-4 h-4" />
-                    </button>
-                    {coins < 10000 && (
-                      <span className="text-[10px] text-amber-400 font-mono text-center sm:text-right w-full">
-                        Yetersiz bakiye! Arenada yemek toplayarak ve düşmanları avlayarak 10.000 coin biriktirin.
-                      </span>
+                    {timeFreezeCharges > 0 ? (
+                      <div className="flex flex-col items-end gap-1 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          disabled
+                          className="w-full sm:w-auto px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default shadow-sm"
+                        >
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span>Zaten Satın Aldınız!</span>
+                        </button>
+                        <span className="text-[10px] text-emerald-400 font-mono text-center sm:text-right w-full font-bold">
+                          ✓ Sahipsiniz (Oyun içinde [G] ile kullanın · 150s bekleme)
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onBuyTimeFreeze()}
+                          disabled={coins < 10000}
+                          className={`w-full sm:w-auto px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer ${
+                            coins >= 10000
+                              ? 'bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 shadow-cyan-500/30 active:scale-95'
+                              : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-80'
+                          }`}
+                        >
+                          <Coins className="w-4 h-4" />
+                          <span>10.000 Coin ile Satın Al</span>
+                          <ArrowUpRight className="w-4 h-4" />
+                        </button>
+                        {coins < 10000 && (
+                          <span className="text-[10px] text-amber-400 font-mono text-center sm:text-right w-full">
+                            Yetersiz bakiye! Arenada yemek toplayarak ve düşmanları avlayarak 10.000 coin biriktirin.
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -394,7 +412,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
           {/* TAB 3: YILAN KOSTÜMLERİ & SKİNLER */}
           {activeTab === 'skins' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {skinList.map((skin) => {
                 const isOwned = unlockedSkins.includes(skin.id);
                 const isEquipped = selectedSkin === skin.id;
@@ -494,10 +512,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         {/* Footer */}
         <div className="px-4 sm:px-6 py-3 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between text-xs text-slate-400 shrink-0">
           <span className="hidden sm:inline">
-            Zaman durdurmayı oyun içinde <strong className="text-cyan-300">[T]</strong> tuşu veya butonla dilediğiniz an açabilirsiniz.
+            Zaman durdurmayı tek oyunculuda <strong className="text-cyan-300">[G]</strong> tuşu veya butonla dilediğiniz an açabilirsiniz.
           </span>
           <span className="sm:hidden text-[11px]">
-            Zaman Durdurma: 10 Saniye / 10.000 Coin
+            Zaman Durdurma: 10sn / 150sn Bekleme [G]
           </span>
           <button
             onClick={onClose}
