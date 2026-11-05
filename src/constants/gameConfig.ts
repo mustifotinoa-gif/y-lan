@@ -1,4 +1,4 @@
-import { Difficulty, DifficultyConfig, FoodType, MarketPowerConfig, MarketPowerId } from '../types/game';
+import { Difficulty, DifficultyConfig, FoodType, MarketPowerConfig, MarketPowerId, MarketRarity, PlaytimeRewardConfig } from '../types/game';
 
 // Arena & Physics Dimensions for Snake.io
 export const ARENA_SIZE = 2600; // 2600x2600 px expansive arena
@@ -416,7 +416,80 @@ export const SNAKE_SKINS = {
     bodyColor2: '#dc2626',
     glowColor: 'rgba(249, 115, 22, 0.8)',
   },
+  SKIN_SHADOW_RED: {
+    id: 'SKIN_SHADOW_RED' as const,
+    name: 'Siyah-Kırmızı Çizgi',
+    price: 0,
+    description: '1 Saat Oynama Hediyesi: Mat siyah gövde üzerinde neon kırmızı siber şeritler',
+    headColor: '#27272a',
+    bodyColor1: '#09090b',
+    bodyColor2: '#ef4444',
+    glowColor: 'rgba(239, 68, 68, 0.85)',
+  },
 };
+
+export const PLAYTIME_REWARDS: PlaytimeRewardConfig[] = [
+  {
+    id: 'REWARD_5M',
+    label: '5 Dakika',
+    requiredSeconds: 5 * 60, // 300 saniye
+    rewardType: 'COINS',
+    rewardValue: 50,
+    title: '50 Coin Ödülü',
+    description: 'İlk 5 dakikanı tamamladın! Kasanıza anında 50 Coin eklenir.',
+    badge: '🪙 +50 Coin',
+  },
+  {
+    id: 'REWARD_15M',
+    label: '15 Dakika',
+    requiredSeconds: 15 * 60, // 900 saniye
+    rewardType: 'DOUBLE_POINTS_10M',
+    rewardValue: 10 * 60 * 1000, // 10 dakika (600.000 ms)
+    title: '10 Dakika 2x Çift Puan',
+    description: '15 dakika oynadın! Tam 10 dakika boyunca yenen tüm yemlerden 2 kat skor kazanırsın.',
+    badge: '🔥 10dk 2x Puan',
+  },
+  {
+    id: 'REWARD_30M',
+    label: '30 Dakika',
+    requiredSeconds: 30 * 60, // 1800 saniye
+    rewardType: 'COINS',
+    rewardValue: 200,
+    title: '200 Coin Ödülü',
+    description: 'Yarım saatlik usta yılan oyunu! Kasanıza anında 200 Coin aktarılır.',
+    badge: '🪙 +200 Coin',
+  },
+  {
+    id: 'REWARD_1H',
+    label: '1 Saat',
+    requiredSeconds: 60 * 60, // 3600 saniye
+    rewardType: 'SKIN',
+    rewardValue: 'SKIN_SHADOW_RED',
+    title: 'Bedava Siyah-Kırmızı Çizgi Kostümü',
+    description: 'Tam 1 saat oynadın! Efsanevi mat siyah ve neon kırmızı şeritli kostüm hediye edildi.',
+    badge: '🎨 Bedava Kostüm',
+  },
+  {
+    id: 'REWARD_90M',
+    label: '1 Saat 30 Dakika',
+    requiredSeconds: 90 * 60, // 5400 saniye
+    rewardType: 'COINS',
+    rewardValue: 789,
+    title: '789 Coin Ödülü',
+    description: '90 dakikalık siber mücadele! Kasanıza tam 789 Coin aktarılır.',
+    badge: '🪙 +789 Coin',
+  },
+  {
+    id: 'REWARD_2H',
+    label: '2 Saat',
+    requiredSeconds: 120 * 60, // 7200 saniye
+    rewardType: 'COINS',
+    rewardValue: 2300,
+    title: '2.300 Coin Süper Ödülü',
+    description: 'İki saatlik efsanevi sadakat ödülü! Kasanıza devasa 2.300 Coin eklenir.',
+    badge: '🪙 +2.300 Coin',
+  },
+];
 
 export const MARKET_ROTATION_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -429,8 +502,19 @@ export const MARKET_POWERS: Record<MarketPowerId, MarketPowerConfig> = {
     chanceLabel: '%0.01',
     price: 200000,
     description: 'Arenada yanınızda 3 sadık klon yılan çıkarır! Hem çoklu hem tek oyunculuda çalışır. Klonlar ölünce içinden hiçbir şey çıkmaz.',
-    badgeLabel: 'Mitolojik Güç',
-    tagColor: 'from-purple-600 via-pink-600 to-rose-600',
+    badgeLabel: 'Mitolojik Güç (Kırmızı)',
+    tagColor: 'from-red-600 via-rose-600 to-red-500',
+  },
+  MYTHIC_HEARTS: {
+    id: 'MYTHIC_HEARTS',
+    name: 'Mitolojik Sonsuz Kalp (10 Can)',
+    rarity: 'MYTHIC',
+    chancePercent: 0.01,
+    chanceLabel: '%0.01',
+    price: 300000,
+    description: 'Yılanınıza devasa 10 Tam Kalp verir! Maksimum can kapasitesini 10 kalbe çıkarır ve anında fuller.',
+    badgeLabel: 'Mitolojik Güç (Kırmızı)',
+    tagColor: 'from-red-600 via-rose-600 to-red-500',
   },
   TIME_FREEZE: {
     id: 'TIME_FREEZE',
@@ -440,8 +524,8 @@ export const MARKET_POWERS: Record<MarketPowerId, MarketPowerConfig> = {
     chanceLabel: '%0.1',
     price: 10000,
     description: '10 saniyeliğine arenadaki tüm botları kaskatı dondurur. [G] tuşu ile kullanılır. 150sn bekleme süresi.',
-    badgeLabel: 'Efsanevi Güç',
-    tagColor: 'from-cyan-400 via-sky-500 to-blue-600',
+    badgeLabel: 'Efsanevi Güç (Sarı)',
+    tagColor: 'from-yellow-400 via-amber-400 to-yellow-500',
   },
   SUPER_TURBO: {
     id: 'SUPER_TURBO',
@@ -450,9 +534,9 @@ export const MARKET_POWERS: Record<MarketPowerId, MarketPowerConfig> = {
     chancePercent: 0.1,
     chanceLabel: '%0.1',
     price: 5000,
-    description: 'Efsanevi turbo sprint: Stamina %70 daha yavaş tükenir, 2 kat hızlı dolar ve neon altın arkasında hız izi bırakır!',
-    badgeLabel: 'Efsanevi Güç',
-    tagColor: 'from-amber-400 via-orange-500 to-yellow-600',
+    description: 'Sadece marketten açılabilir! Turbo sprint yeteneğini kazandırır. Stamina %70 daha yavaş tükenir, 2 kat hızlı dolar ve neon altın hız izi bırakır!',
+    badgeLabel: 'Efsanevi Güç (Sarı)',
+    tagColor: 'from-yellow-400 via-amber-400 to-yellow-500',
   },
   MEGA_LAHMACUN: {
     id: 'MEGA_LAHMACUN',
@@ -462,8 +546,8 @@ export const MARKET_POWERS: Record<MarketPowerId, MarketPowerConfig> = {
     chanceLabel: '%30.0',
     price: 350,
     description: 'Arenada bonus dev lahmacunlar çıkarır ve her yenen yemekte ekstra +%15 kitle uzaması kazandırır.',
-    badgeLabel: 'Epik Güç',
-    tagColor: 'from-purple-500 to-indigo-600',
+    badgeLabel: 'Epik Güç (Mor)',
+    tagColor: 'from-purple-600 via-fuchsia-600 to-purple-500',
   },
   MAGNET_VORTEX: {
     id: 'MAGNET_VORTEX',
@@ -473,8 +557,8 @@ export const MARKET_POWERS: Record<MarketPowerId, MarketPowerConfig> = {
     chanceLabel: '%34.9',
     price: 500,
     description: 'Kalıcı manyetik çekim alanı: Sahadaki tüm parıltılı enerji kürelerini otomatik olarak yılanınıza doğru çeker.',
-    badgeLabel: 'Nadir Güç',
-    tagColor: 'from-emerald-400 to-teal-500',
+    badgeLabel: 'Nadir Güç (Mavi)',
+    tagColor: 'from-blue-600 via-sky-500 to-blue-500',
   },
   CYBER_SHIELD: {
     id: 'CYBER_SHIELD',
@@ -484,7 +568,80 @@ export const MARKET_POWERS: Record<MarketPowerId, MarketPowerConfig> = {
     chanceLabel: '%35.0',
     price: 750,
     description: 'Kalıcı koruma zırhı: Zehirli baloncuklardan gelen hasarları %50 soğurur ve canınızı korur.',
-    badgeLabel: 'Nadir Güç',
-    tagColor: 'from-teal-400 to-cyan-500',
+    badgeLabel: 'Nadir Güç (Mavi)',
+    tagColor: 'from-blue-600 via-sky-500 to-blue-500',
+  },
+};
+
+// Exact user rarity color mapping:
+// Mythic: Kırmızı | Legendary: Sarı | Epic: Mor | Rare: Mavi | Common: Yeşil
+export const RARITY_CONFIGS: Record<
+  MarketRarity,
+  {
+    name: string;
+    color: string;
+    textColor: string;
+    bgColor: string;
+    borderColor: string;
+    borderActive: string;
+    glow: string;
+    badgeBg: string;
+    chanceLabel: string;
+  }
+> = {
+  MYTHIC: {
+    name: 'Mitolojik',
+    color: '#ef4444', // Kırmızı
+    textColor: 'text-red-400',
+    bgColor: 'bg-red-950/40',
+    borderColor: 'border-red-500/70',
+    borderActive: 'border-red-500',
+    glow: 'shadow-[0_0_30px_rgba(239,68,68,0.45)]',
+    badgeBg: 'bg-gradient-to-r from-red-600 via-rose-600 to-red-500 text-white shadow-red-500/40',
+    chanceLabel: '%0.01',
+  },
+  LEGENDARY: {
+    name: 'Efsanevi',
+    color: '#eab308', // Sarı
+    textColor: 'text-yellow-300',
+    bgColor: 'bg-yellow-950/30',
+    borderColor: 'border-yellow-400/70',
+    borderActive: 'border-yellow-400',
+    glow: 'shadow-[0_0_25px_rgba(234,179,8,0.4)]',
+    badgeBg: 'bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-600 text-slate-950 font-black shadow-yellow-500/30',
+    chanceLabel: '%0.1',
+  },
+  EPIC: {
+    name: 'Epik',
+    color: '#a855f7', // Mor
+    textColor: 'text-purple-300',
+    bgColor: 'bg-purple-950/30',
+    borderColor: 'border-purple-500/70',
+    borderActive: 'border-purple-500',
+    glow: 'shadow-[0_0_20px_rgba(168,85,247,0.35)]',
+    badgeBg: 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-purple-500/30',
+    chanceLabel: '%30.0',
+  },
+  RARE: {
+    name: 'Nadir',
+    color: '#3b82f6', // Mavi
+    textColor: 'text-blue-300',
+    bgColor: 'bg-blue-950/30',
+    borderColor: 'border-blue-500/70',
+    borderActive: 'border-blue-500',
+    glow: 'shadow-[0_0_15px_rgba(59,130,246,0.3)]',
+    badgeBg: 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-blue-500/25',
+    chanceLabel: '%34.9',
+  },
+  COMMON: {
+    name: 'Yaygın',
+    color: '#22c55e', // Yeşil
+    textColor: 'text-emerald-300',
+    bgColor: 'bg-emerald-950/30',
+    borderColor: 'border-emerald-500/70',
+    borderActive: 'border-emerald-500',
+    glow: 'shadow-[0_0_15px_rgba(34,197,94,0.25)]',
+    badgeBg: 'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-emerald-500/25',
+    chanceLabel: '%35.0',
   },
 };

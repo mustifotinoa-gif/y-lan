@@ -15,6 +15,7 @@ import {
   Home,
   ShoppingBag,
   Hourglass,
+  Lock,
 } from 'lucide-react';
 import { POWER_UP_CONFIG } from '../constants/gameConfig';
 import { ActivePowerUp, LiveStandingItem } from '../types/game';
@@ -42,6 +43,7 @@ interface HUDProps {
   timeFreezeCooldownMs?: number;
   isMultiplayer?: boolean;
   onActivateTimeFreeze?: () => void;
+  isTurboUnlocked?: boolean;
   onTogglePause: () => void;
   onToggleMute: () => void;
   onOpenLeaderboard: () => void;
@@ -73,6 +75,7 @@ export const HUD: React.FC<HUDProps> = ({
   timeFreezeCooldownMs = 0,
   isMultiplayer = false,
   onActivateTimeFreeze,
+  isTurboUnlocked = false,
   onTogglePause,
   onToggleMute,
   onOpenLeaderboard,
@@ -90,22 +93,23 @@ export const HUD: React.FC<HUDProps> = ({
       <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-800 shadow-xl">
         {/* Lives Display with Half-Heart Support */}
         <div className="flex items-center gap-1.5 shrink-0" title={`Kalan Can: ${lives.toFixed(1)} / ${maxLives}`}>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 flex-wrap max-w-[150px] sm:max-w-none">
             {Array.from({ length: heartCount }).map((_, index) => {
               const isFull = lives >= index + 1;
               const isHalf = !isFull && lives >= index + 0.5;
+              const sizeCls = heartCount > 5 ? 'w-3 h-3 sm:w-4 sm:h-4' : 'w-4 h-4 sm:w-5 sm:h-5';
 
               return (
-                <div key={index} className="relative w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-slate-800 fill-slate-900/60" />
+                <div key={index} className={`relative ${sizeCls} flex items-center justify-center`}>
+                  <Heart className={`${sizeCls} text-slate-800 fill-slate-900/60`} />
 
                   {isFull && (
-                    <Heart className="absolute inset-0 w-4 h-4 sm:w-5 sm:h-5 text-rose-500 fill-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)] scale-100 transition-transform" />
+                    <Heart className={`absolute inset-0 ${sizeCls} text-rose-500 fill-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)] scale-100 transition-transform`} />
                   )}
 
                   {isHalf && (
-                    <div className="absolute inset-0 overflow-hidden w-2 sm:w-2.5">
-                      <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500 fill-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)] max-w-none" />
+                    <div className="absolute inset-0 overflow-hidden w-1.5 sm:w-2">
+                      <Heart className={`w-3 h-3 sm:w-4 sm:h-4 text-rose-500 fill-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)] max-w-none`} />
                     </div>
                   )}
                 </div>
@@ -267,17 +271,30 @@ export const HUD: React.FC<HUDProps> = ({
       <div className="flex items-center justify-between gap-2 px-3 py-1 rounded-lg bg-slate-950/60 border border-slate-800/80 text-[11px]">
         {/* Boost Energy Bar */}
         <div className="flex items-center gap-2 flex-1 max-w-[240px]">
-          <span className={`font-mono text-[10px] font-bold ${isBoosting ? 'text-amber-400 animate-pulse' : 'text-slate-400'}`}>
-            ⚡ TURBO (Space)
-          </span>
-          <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-75 ${
-                isBoosting ? 'bg-gradient-to-r from-amber-400 to-rose-500' : 'bg-cyan-400'
-              }`}
-              style={{ width: `${boostStaminaPercent}%` }}
-            />
-          </div>
+          {isTurboUnlocked ? (
+            <>
+              <span className={`font-mono text-[10px] font-bold ${isBoosting ? 'text-amber-400 animate-pulse' : 'text-slate-400'}`}>
+                ⚡ TURBO (Space)
+              </span>
+              <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-75 ${
+                    isBoosting ? 'bg-gradient-to-r from-amber-400 to-rose-500' : 'bg-cyan-400'
+                  }`}
+                  style={{ width: `${boostStaminaPercent}%` }}
+                />
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={onOpenShop}
+              className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 shadow-sm"
+              title="Turbo kilitli. Markette Efsanevi Turbo (5.000 Coin) satın alarak açın!"
+            >
+              <Lock className="w-3 h-3 text-amber-400" />
+              <span>Turbo Kilitli (Markette 5.000 🪙)</span>
+            </button>
+          )}
         </div>
 
         {/* Bot Kills Badge */}

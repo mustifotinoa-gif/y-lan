@@ -35,7 +35,15 @@ import {
   SnakeSkinId,
   UpgradeLevels,
   GameMode,
+  CloneSnake,
+  MarketPowerId,
+  PlaytimeRewardId,
 } from '../types/game';
+import {
+  MARKET_POWERS,
+  MARKET_ROTATION_INTERVAL_MS,
+  PLAYTIME_REWARDS,
+} from '../constants/gameConfig';
 import { multiplayer, RemoteHumanPlayer, ChatMessage } from '../services/multiplayer';
 
 // Engine state structure kept in a ref for zero-garbage 120 FPS RAF performance
@@ -69,6 +77,7 @@ interface GameEngineState {
   timeFreezeRemainingMs: number;
   timeFreezeCooldownMs: number;
   selectedSkin: SnakeSkinId;
+  clones: CloneSnake[];
 }
 
 export function useSnakeGame() {
@@ -178,6 +187,179 @@ export function useSnakeGame() {
     }
   });
 
+  // Mythic Cloning (200.000 Coin, 3 Clones in Solo & Multiplayer)
+  const [hasCloning, setHasCloning] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cybersnake_item_mythic_cloning') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Mythic Titan Hearts (300.000 Coin, 10 Tam Kalp Kapasitesi)
+  const [hasMythicHearts, setHasMythicHearts] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cybersnake_item_mythic_hearts') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Legendary Super Turbo Sprint (5.000 Coin, 70% stamina saving, 2x recharge)
+  const [hasLegendaryTurbo, setHasLegendaryTurbo] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cybersnake_item_legendary_turbo') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // 10-Minute Market Rotation Timer & Active Powers
+  const [rotationTimeLeftMs, setRotationTimeLeftMs] = useState<number>(() => {
+    const epoch = Math.floor(Date.now() / MARKET_ROTATION_INTERVAL_MS);
+    return (epoch + 1) * MARKET_ROTATION_INTERVAL_MS - Date.now();
+  });
+
+  // Infinite Inventory of Acquired Powers (Sonsuz Alan / Kapasite: ∞)
+  const [inventory, setInventory] = useState<MarketPowerId[]>(() => {
+    try {
+      const saved = localStorage.getItem('cybersnake_infinite_inventory');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    // Seed with starter powers or previously purchased powers
+    const initial: MarketPowerId[] = ['MEGA_LAHMACUN', 'MAGNET_VORTEX'];
+    if (localStorage.getItem('cybersnake_item_mythic_cloning') === 'true' && !initial.includes('MYTHIC_CLONING')) initial.push('MYTHIC_CLONING');
+    if (localStorage.getItem('cybersnake_item_mythic_hearts') === 'true' && !initial.includes('MYTHIC_HEARTS')) initial.push('MYTHIC_HEARTS');
+    if ((parseInt(localStorage.getItem('cybersnake_time_freeze_charges') || '0', 10)) > 0 && !initial.includes('TIME_FREEZE')) initial.push('TIME_FREEZE');
+    if (localStorage.getItem('cybersnake_item_legendary_turbo') === 'true' && !initial.includes('SUPER_TURBO')) initial.push('SUPER_TURBO');
+    if (localStorage.getItem('cybersnake_item_cyber_shield') === 'true' && !initial.includes('CYBER_SHIELD')) initial.push('CYBER_SHIELD');
+    return initial;
+  });
+
+  // Up to 5 Active Powers Selected (5 Tane Güç Yuvası)
+  const [activeLoadout, setActiveLoadout] = useState<MarketPowerId[]>(() => {
+    try {
+      const saved = localStorage.getItem('cybersnake_active_loadout');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.slice(0, 5);
+      }
+    } catch {}
+    const defaultSlots: MarketPowerId[] = ['MEGA_LAHMACUN', 'MAGNET_VORTEX'];
+    if (localStorage.getItem('cybersnake_item_mythic_cloning') === 'true' && defaultSlots.length < 5) defaultSlots.push('MYTHIC_CLONING');
+    if (localStorage.getItem('cybersnake_item_mythic_hearts') === 'true' && defaultSlots.length < 5 && !defaultSlots.includes('MYTHIC_HEARTS')) defaultSlots.push('MYTHIC_HEARTS');
+    if ((parseInt(localStorage.getItem('cybersnake_time_freeze_charges') || '0', 10)) > 0 && defaultSlots.length < 5) defaultSlots.push('TIME_FREEZE');
+    if (localStorage.getItem('cybersnake_item_legendary_turbo') === 'true' && defaultSlots.length < 5) defaultSlots.push('SUPER_TURBO');
+    return defaultSlots.slice(0, 5);
+  });
+
+  const activeLoadoutRef = useRef<MarketPowerId[]>(activeLoadout);
+  useEffect(() => {
+    activeLoadoutRef.current = activeLoadout;
+    try {
+      localStorage.setItem('cybersnake_active_loadout', JSON.stringify(activeLoadout));
+    } catch {}
+  }, [activeLoadout]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cybersnake_infinite_inventory', JSON.stringify(inventory));
+    } catch {}
+  }, [inventory]);
+
+  // 24-Hour Daily Reset Constant (86,400,000 ms = 24 saat)
+  const DAILY_RESET_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+  // 24-Hour Daily Reset Timestamp (Her 24 Saatte Bir Hediyeler Sıfırlanıp Yenilenir)
+  const [lastDailyResetTime, setLastDailyResetTime] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('cybersnake_playtime_last_reset_time');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val) && val > 0) return val;
+      }
+    } catch {}
+    const now = Date.now();
+    try {
+      localStorage.setItem('cybersnake_playtime_last_reset_time', String(now));
+    } catch {}
+    return now;
+  });
+
+  // Total Playtime in Seconds (Ana menüde ve oyunda sürekli birikir)
+  const [totalPlaytimeSeconds, setTotalPlaytimeSeconds] = useState<number>(() => {
+    try {
+      const savedReset = localStorage.getItem('cybersnake_playtime_last_reset_time');
+      const resetTime = savedReset ? parseInt(savedReset, 10) : Date.now();
+      if (Date.now() - resetTime >= 24 * 60 * 60 * 1000) {
+        return 0;
+      }
+      const saved = localStorage.getItem('cybersnake_total_playtime_seconds');
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  // Claimed Playtime Rewards (Alınan Dakikalık Hediyeler - 24 Saatte Bir Yenilenir)
+  const [claimedRewards, setClaimedRewards] = useState<string[]>(() => {
+    try {
+      const savedReset = localStorage.getItem('cybersnake_playtime_last_reset_time');
+      const resetTime = savedReset ? parseInt(savedReset, 10) : Date.now();
+      if (Date.now() - resetTime >= 24 * 60 * 60 * 1000) {
+        return [];
+      }
+      const saved = localStorage.getItem('cybersnake_claimed_playtime_rewards');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Continuous Playtime Accumulation (Ticks on Title Screen / Main Menu & In-Game) + 24-Hour Reset Check
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      let currentReset = lastDailyResetTime;
+      try {
+        const saved = localStorage.getItem('cybersnake_playtime_last_reset_time');
+        if (saved) {
+          const val = parseInt(saved, 10);
+          if (!isNaN(val) && val > 0) currentReset = val;
+        }
+      } catch {}
+
+      // Her 24 saatte bir hediyeleri sıfırla ve yeniden aç!
+      if (now - currentReset >= DAILY_RESET_INTERVAL_MS) {
+        const newReset = now;
+        setLastDailyResetTime(newReset);
+        setTotalPlaytimeSeconds(0);
+        setClaimedRewards([]);
+        try {
+          localStorage.setItem('cybersnake_playtime_last_reset_time', String(newReset));
+          localStorage.setItem('cybersnake_total_playtime_seconds', '0');
+          localStorage.setItem('cybersnake_claimed_playtime_rewards', '[]');
+        } catch {}
+      } else {
+        // Ana menüde dururken de süre devam eder (her saniye +1)
+        setTotalPlaytimeSeconds((prev) => {
+          const next = prev + 1;
+          if (next % 5 === 0) {
+            try {
+              localStorage.setItem('cybersnake_total_playtime_seconds', String(next));
+            } catch {}
+          }
+          return next;
+        });
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [lastDailyResetTime]);
+
   // Multiplayer Game Mode State
   const [gameMode, setGameMode] = useState<GameMode>('MULTIPLAYER');
   const [roomId, setRoomId] = useState<string>('GLOBAL');
@@ -192,11 +374,23 @@ export function useSnakeGame() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [multiplayerPing, setMultiplayerPing] = useState<number>(24);
 
-  // Calculate maximum lives with health upgrade
-  const maxPossibleLives = Math.min(
-    5.0,
-    MAX_LIVES + upgrades.healthLevel * 0.5 + (upgrades.healthLevel === 3 ? 0.5 : 0)
-  );
+  // Calculate maximum lives with health upgrade (or 10 Full Hearts if Mythic Hearts is equipped!)
+  const isMythicHeartsEquipped = hasMythicHearts && activeLoadout.includes('MYTHIC_HEARTS');
+  const maxPossibleLives = isMythicHeartsEquipped
+    ? 10.0
+    : Math.min(
+        5.0,
+        MAX_LIVES + upgrades.healthLevel * 0.5 + (upgrades.healthLevel === 3 ? 0.5 : 0)
+      );
+
+  useEffect(() => {
+    if (hasMythicHearts && activeLoadout.includes('MYTHIC_HEARTS')) {
+      if (engineRef.current.lives < 10.0) {
+        engineRef.current.lives = 10.0;
+        setLives(10.0);
+      }
+    }
+  }, [hasMythicHearts, activeLoadout]);
 
   // Engine state reference for 120 FPS continuous physics
   const engineRef = useRef<GameEngineState>({
@@ -229,6 +423,7 @@ export function useSnakeGame() {
     timeFreezeRemainingMs: 0,
     timeFreezeCooldownMs: 0,
     selectedSkin: 'SKIN_DEFAULT',
+    clones: [],
   });
 
   // Coin updates
@@ -323,54 +518,299 @@ export function useSnakeGame() {
     [coins, upgrades, maxPossibleLives, updateCoins, addEngineFloatingText]
   );
 
-  // Buy tactical one-time market items (Mega Lahmacun, Mıknatıs, Siber Kalkan)
+  // 10,000 Coin Time Freeze purchase (single purchase limit as requested)
+  const buyTimeFreeze = useCallback((): boolean => {
+    const PRICE = 10000;
+    if (timeFreezeCharges > 0) {
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        '⚠️ Zaten satın aldınız!',
+        '#f59e0b'
+      );
+      return false;
+    }
+
+    if (coins < PRICE) return false;
+
+    updateCoins(-PRICE);
+    sound.playPowerUp();
+
+    setTimeFreezeCharges(1);
+    setInventory((prev) => (prev.includes('TIME_FREEZE') ? prev : [...prev, 'TIME_FREEZE']));
+    setActiveLoadout((prev) => (prev.includes('TIME_FREEZE') || prev.length >= 5 ? prev : [...prev, 'TIME_FREEZE']));
+    try {
+      localStorage.setItem('cybersnake_time_freeze_charges', '1');
+    } catch {}
+
+    addEngineFloatingText(
+      engineRef.current.playerX,
+      engineRef.current.playerY - 30,
+      '⏳ ZAMAN DURDURMA ALINDI! (10 Saniye)',
+      '#38bdf8'
+    );
+    return true;
+  }, [coins, timeFreezeCharges, updateCoins, addEngineFloatingText]);
+
+  // Buy tactical one-time market items with rarities
   const buyTacticalItem = useCallback(
-    (itemId: 'MEGA_LAHMACUN' | 'MAGNET_VORTEX' | 'CYBER_SHIELD'): boolean => {
+    (itemId: MarketPowerId): boolean => {
+      if (itemId === 'MYTHIC_CLONING') {
+        if (hasCloning) {
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#ef4444');
+          return false;
+        }
+        if (coins < 200000) return false;
+        updateCoins(-200000);
+        sound.playPowerUp();
+        setHasCloning(true);
+        setInventory((prev) => (prev.includes('MYTHIC_CLONING') ? prev : [...prev, 'MYTHIC_CLONING']));
+        setActiveLoadout((prev) => (prev.includes('MYTHIC_CLONING') || prev.length >= 5 ? prev : [...prev, 'MYTHIC_CLONING']));
+        try { localStorage.setItem('cybersnake_item_mythic_cloning', 'true'); } catch {}
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🔴 MİTOLOJİK KLONLAMA ALINDI! (3 Klon Sahada)', '#ef4444');
+        return true;
+      }
+
+      if (itemId === 'MYTHIC_HEARTS') {
+        if (hasMythicHearts) {
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#ef4444');
+          return false;
+        }
+        if (coins < 300000) return false;
+        updateCoins(-300000);
+        sound.playPowerUp();
+        setHasMythicHearts(true);
+        setInventory((prev) => (prev.includes('MYTHIC_HEARTS') ? prev : [...prev, 'MYTHIC_HEARTS']));
+        setActiveLoadout((prev) => (prev.includes('MYTHIC_HEARTS') || prev.length >= 5 ? prev : [...prev, 'MYTHIC_HEARTS']));
+        try { localStorage.setItem('cybersnake_item_mythic_hearts', 'true'); } catch {}
+        engineRef.current.lives = 10.0;
+        setLives(10.0);
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🔴 MİTOLOJİK 10 KALP ALINDI! (300.000 Coin)', '#ef4444');
+        return true;
+      }
+
+      if (itemId === 'SUPER_TURBO') {
+        if (hasLegendaryTurbo) {
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#eab308');
+          return false;
+        }
+        if (coins < 5000) return false;
+        updateCoins(-5000);
+        sound.playPowerUp();
+        setHasLegendaryTurbo(true);
+        setInventory((prev) => (prev.includes('SUPER_TURBO') ? prev : [...prev, 'SUPER_TURBO']));
+        setActiveLoadout((prev) => (prev.includes('SUPER_TURBO') || prev.length >= 5 ? prev : [...prev, 'SUPER_TURBO']));
+        try { localStorage.setItem('cybersnake_item_legendary_turbo', 'true'); } catch {}
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🟡 EFSANEVİ SÜPER TURBO ALINDI! (%70 Tasarruf)', '#eab308');
+        return true;
+      }
+
+      if (itemId === 'TIME_FREEZE') {
+        return buyTimeFreeze();
+      }
+
       if (itemId === 'MEGA_LAHMACUN') {
         if (hasMegaLahmacun) {
-          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#f59e0b');
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#a855f7');
           return false;
         }
         if (coins < 350) return false;
         updateCoins(-350);
         sound.playGoldenApple();
         setHasMegaLahmacun(true);
+        setInventory((prev) => (prev.includes('MEGA_LAHMACUN') ? prev : [...prev, 'MEGA_LAHMACUN']));
+        setActiveLoadout((prev) => (prev.includes('MEGA_LAHMACUN') || prev.length >= 5 ? prev : [...prev, 'MEGA_LAHMACUN']));
         try { localStorage.setItem('cybersnake_item_mega_lahmacun', 'true'); } catch {}
-        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🍕 MEGA LAHMACUN ZİYAFETİ ALINDI!', '#ea580c');
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🟣 EPİK MEGA LAHMACUN ZİYAFETİ ALINDI!', '#a855f7');
         return true;
       }
 
       if (itemId === 'MAGNET_VORTEX') {
         if (hasMagnetVortex) {
-          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#f59e0b');
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#3b82f6');
           return false;
         }
         if (coins < 500) return false;
         updateCoins(-500);
         sound.playGoldenApple();
         setHasMagnetVortex(true);
+        setInventory((prev) => (prev.includes('MAGNET_VORTEX') ? prev : [...prev, 'MAGNET_VORTEX']));
+        setActiveLoadout((prev) => (prev.includes('MAGNET_VORTEX') || prev.length >= 5 ? prev : [...prev, 'MAGNET_VORTEX']));
         try { localStorage.setItem('cybersnake_item_magnet_vortex', 'true'); } catch {}
-        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🧲 MIKNATIS GİRDABI ALINDI!', '#f43f5e');
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🔵 NADİR MIKNATIS GİRDABI ALINDI!', '#3b82f6');
         return true;
       }
 
       if (itemId === 'CYBER_SHIELD') {
         if (hasCyberShield) {
-          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#f59e0b');
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten satın aldınız!', '#3b82f6');
           return false;
         }
         if (coins < 750) return false;
         updateCoins(-750);
         sound.playPowerUp();
         setHasCyberShield(true);
+        setInventory((prev) => (prev.includes('CYBER_SHIELD') ? prev : [...prev, 'CYBER_SHIELD']));
+        setActiveLoadout((prev) => (prev.includes('CYBER_SHIELD') || prev.length >= 5 ? prev : [...prev, 'CYBER_SHIELD']));
         try { localStorage.setItem('cybersnake_item_cyber_shield', 'true'); } catch {}
-        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🛡️ SİBER KALKAN ALINDI!', '#14b8a6');
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🔵 NADİR SİBER KALKAN ALINDI!', '#3b82f6');
         return true;
       }
 
       return false;
     },
-    [coins, hasMegaLahmacun, hasMagnetVortex, hasCyberShield, updateCoins, addEngineFloatingText]
+    [coins, hasCloning, hasMythicHearts, hasLegendaryTurbo, hasMegaLahmacun, hasMagnetVortex, hasCyberShield, updateCoins, buyTimeFreeze, addEngineFloatingText]
+  );
+
+  // Claim a Playtime Milestone Reward (Dakikalık Hediye Alma)
+  const claimPlaytimeReward = useCallback(
+    (rewardId: PlaytimeRewardId): boolean => {
+      const config = PLAYTIME_REWARDS.find((r) => r.id === rewardId);
+      if (!config) return false;
+
+      if (totalPlaytimeSeconds < config.requiredSeconds) {
+        addEngineFloatingText(
+          engineRef.current.playerX,
+          engineRef.current.playerY - 30,
+          '⚠️ Henüz gereken süreye ulaşmadınız!',
+          '#f59e0b'
+        );
+        return false;
+      }
+
+      if (claimedRewards.includes(rewardId)) {
+        addEngineFloatingText(
+          engineRef.current.playerX,
+          engineRef.current.playerY - 30,
+          '✓ Bu ödülü zaten aldınız!',
+          '#10b981'
+        );
+        return false;
+      }
+
+      if (config.rewardType === 'COINS') {
+        const amount = config.rewardValue as number;
+        updateCoins(amount);
+        sound.playGoldenApple();
+        addEngineFloatingText(
+          engineRef.current.playerX,
+          engineRef.current.playerY - 30,
+          `🎁 +${amount.toLocaleString('tr-TR')} COİN HEDİYESİ ALINDI!`,
+          '#f59e0b'
+        );
+      } else if (config.rewardType === 'DOUBLE_POINTS_10M') {
+        const durationMs = 10 * 60 * 1000;
+        engineRef.current.activePowerUps = engineRef.current.activePowerUps.filter(
+          (p) => p.type !== 'DOUBLE_POINTS'
+        );
+        engineRef.current.activePowerUps.push({
+          type: 'DOUBLE_POINTS',
+          remainingMs: durationMs,
+          totalMs: durationMs,
+        });
+        setActivePowerUps([...engineRef.current.activePowerUps]);
+        sound.playPowerUp();
+        addEngineFloatingText(
+          engineRef.current.playerX,
+          engineRef.current.playerY - 30,
+          '🔥 10 DAKİKA 2X PUAN AKTİF EDİLDİ!',
+          '#ec4899'
+        );
+      } else if (config.rewardType === 'SKIN') {
+        const skinId = config.rewardValue as SnakeSkinId;
+        setUnlockedSkins((prev) => {
+          if (prev.includes(skinId)) return prev;
+          const updated = [...prev, skinId];
+          try {
+            localStorage.setItem('cybersnake_unlocked_skins', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+        setSelectedSkin(skinId);
+        try {
+          localStorage.setItem('cybersnake_selected_skin', skinId);
+        } catch {}
+        sound.playPowerUp();
+        addEngineFloatingText(
+          engineRef.current.playerX,
+          engineRef.current.playerY - 30,
+          '🎨 SİYAH-KIRMIZI ÇİZGİ KOSTÜMÜ HEDİYE EDİLDİ & KUŞANILDI!',
+          '#ef4444'
+        );
+      }
+
+      setClaimedRewards((prev) => {
+        const updated = [...prev, rewardId];
+        try {
+          localStorage.setItem('cybersnake_claimed_playtime_rewards', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      return true;
+    },
+    [totalPlaytimeSeconds, claimedRewards, updateCoins, addEngineFloatingText]
+  );
+
+  // Equip a power to one of the 5 active slots
+  const equipPower = useCallback(
+    (powerId: MarketPowerId): boolean => {
+      if (activeLoadout.includes(powerId)) return true;
+      if (activeLoadout.length >= 5) {
+        addEngineFloatingText(
+          engineRef.current.playerX,
+          engineRef.current.playerY - 30,
+          '⚠️ 5 Güç Yuvası Dolu! Önce bir gücü çıkarın.',
+          '#f59e0b'
+        );
+        return false;
+      }
+      sound.playPowerUp();
+      setActiveLoadout((prev) => [...prev, powerId]);
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        `✓ ${MARKET_POWERS[powerId]?.name || powerId} Kuşanıldı! (${activeLoadout.length + 1}/5)`,
+        '#10b981'
+      );
+      return true;
+    },
+    [activeLoadout, addEngineFloatingText]
+  );
+
+  // Unequip a power from active loadout
+  const unequipPower = useCallback(
+    (powerId: MarketPowerId) => {
+      setActiveLoadout((prev) => prev.filter((id) => id !== powerId));
+      sound.playEat(1);
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        `✕ ${MARKET_POWERS[powerId]?.name || powerId} Çıkarıldı`,
+        '#94a3b8'
+      );
+    },
+    [addEngineFloatingText]
+  );
+
+  // Toggle power equip/unequip
+  const toggleEquipPower = useCallback(
+    (powerId: MarketPowerId): boolean => {
+      if (activeLoadout.includes(powerId)) {
+        unequipPower(powerId);
+        return false;
+      } else {
+        return equipPower(powerId);
+      }
+    },
+    [activeLoadout, equipPower, unequipPower]
+  );
+
+  const isPowerActive = useCallback(
+    (powerId: MarketPowerId): boolean => {
+      return activeLoadout.includes(powerId);
+    },
+    [activeLoadout]
   );
 
   // Helper to spawn random point in circular arena
@@ -423,38 +863,6 @@ export function useSnakeGame() {
     [difficulty]
   );
 
-  // 10,000 Coin Time Freeze purchase (single purchase limit as requested)
-  const buyTimeFreeze = useCallback((): boolean => {
-    const PRICE = 10000;
-    if (timeFreezeCharges > 0) {
-      addEngineFloatingText(
-        engineRef.current.playerX,
-        engineRef.current.playerY - 30,
-        '⚠️ Zaten satın aldınız!',
-        '#f59e0b'
-      );
-      return false;
-    }
-
-    if (coins < PRICE) return false;
-
-    updateCoins(-PRICE);
-    sound.playPowerUp();
-
-    setTimeFreezeCharges(1);
-    try {
-      localStorage.setItem('cybersnake_time_freeze_charges', '1');
-    } catch {}
-
-    addEngineFloatingText(
-      engineRef.current.playerX,
-      engineRef.current.playerY - 30,
-      '⏳ ZAMAN DURDURMA ALINDI! (10 Saniye)',
-      '#38bdf8'
-    );
-    return true;
-  }, [coins, timeFreezeCharges, updateCoins, addEngineFloatingText]);
-
   // Activate 10-second Time Freeze with 150-second cooldown! (Solo mode only)
   const activateTimeFreeze = useCallback((): boolean => {
     // User request: No time freeze in multiplayer mode!
@@ -463,6 +871,16 @@ export function useSnakeGame() {
         engineRef.current.playerX,
         engineRef.current.playerY - 30,
         '⚠️ Çok oyunculu modda Zaman Durdurma kapalıdır!',
+        '#f59e0b'
+      );
+      return false;
+    }
+
+    if (!activeLoadoutRef.current.includes('TIME_FREEZE')) {
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        '⚠️ Zaman Dondurma aktif 5 güç yuvanızda kuşanılı değil!',
         '#f59e0b'
       );
       return false;
@@ -658,6 +1076,52 @@ export function useSnakeGame() {
         initialFoods.push(createFoodItem(p, undefined, diff));
       }
 
+      // Mythic 3 Clones (spawned in both solo and multiplayer if equipped in the 5 loadout slots)
+      const isCloningEquipped = hasCloning && activeLoadoutRef.current.includes('MYTHIC_CLONING');
+      const initialClones: CloneSnake[] = isCloningEquipped
+        ? [
+            {
+              id: 'clone-1',
+              name: 'Klon #1',
+              body: Array.from({ length: 14 }).map((_, i) => ({
+                x: center - (i + 1) * SEGMENT_SPACING - 35,
+                y: center - 35,
+              })),
+              angle: startAngle,
+              isAlive: true,
+              length: 14,
+              offsetAngle: -0.55,
+              offsetDist: 42,
+            },
+            {
+              id: 'clone-2',
+              name: 'Klon #2',
+              body: Array.from({ length: 14 }).map((_, i) => ({
+                x: center - (i + 1) * SEGMENT_SPACING + 35,
+                y: center + 35,
+              })),
+              angle: startAngle,
+              isAlive: true,
+              length: 14,
+              offsetAngle: 0.55,
+              offsetDist: 42,
+            },
+            {
+              id: 'clone-3',
+              name: 'Klon #3',
+              body: Array.from({ length: 14 }).map((_, i) => ({
+                x: center - (i + 2) * SEGMENT_SPACING,
+                y: center,
+              })),
+              angle: startAngle,
+              isAlive: true,
+              length: 14,
+              offsetAngle: Math.PI,
+              offsetDist: 55,
+            },
+          ]
+        : [];
+
       // Initialize engine ref state
       engineRef.current = {
         playerX: center,
@@ -689,6 +1153,7 @@ export function useSnakeGame() {
         timeFreezeRemainingMs: 0,
         timeFreezeCooldownMs: 0,
         selectedSkin: selectedSkin,
+        clones: initialClones,
       };
 
       setLives(maxPossibleLives);
@@ -743,11 +1208,49 @@ export function useSnakeGame() {
     engineRef.current.playerTargetAngle = angle;
   }, []);
 
-  // Turbo boost trigger
-  const setBoosting = useCallback((boosting: boolean) => {
-    engineRef.current.isBoosting = boosting;
-    setIsBoosting(boosting);
-  }, []);
+  const lastTurboWarnRef = useRef<number>(0);
+
+  // Turbo boost trigger (Only available if purchased from Market!)
+  const setBoosting = useCallback(
+    (boosting: boolean) => {
+      const isTurboUnlocked = hasLegendaryTurbo && activeLoadoutRef.current.includes('SUPER_TURBO');
+
+      if (boosting) {
+        if (!isTurboUnlocked) {
+          engineRef.current.isBoosting = false;
+          setIsBoosting(false);
+
+          const now = performance.now();
+          if (now - lastTurboWarnRef.current > 3000) {
+            lastTurboWarnRef.current = now;
+            if (!hasLegendaryTurbo) {
+              addEngineFloatingText(
+                engineRef.current.playerX,
+                engineRef.current.playerY - 30,
+                '🔒 Turbo Kilitli! Markette Efsanevi Turbo satın alın (5.000 Coin)',
+                '#eab308'
+              );
+            } else {
+              addEngineFloatingText(
+                engineRef.current.playerX,
+                engineRef.current.playerY - 30,
+                '⚠️ Turbo kuşanılı değil! Envanterden 5 aktif güç arasına ekleyin.',
+                '#eab308'
+              );
+            }
+          }
+          return;
+        }
+
+        engineRef.current.isBoosting = true;
+        setIsBoosting(true);
+      } else {
+        engineRef.current.isBoosting = false;
+        setIsBoosting(false);
+      }
+    },
+    [hasLegendaryTurbo, addEngineFloatingText]
+  );
 
   // Collision with Bot Body or Arena Boundary
   const handlePlayerDamage = useCallback(
@@ -887,18 +1390,27 @@ export function useSnakeGame() {
         const baseSpeed = diffCfg.baseSpeed * (1 + upgrades.speedLevel * 0.15);
         let actualSpeed = baseSpeed;
 
-        if (eng.isBoosting && eng.boostStamina > 5) {
-          actualSpeed = baseSpeed * 1.85;
-          eng.boostStamina = Math.max(0, eng.boostStamina - 28 * dt);
+        const isTurboEquipped = hasLegendaryTurbo && activeLoadoutRef.current.includes('SUPER_TURBO');
 
-          // Drop glowing boost particles behind tail
-          if (Math.random() < 0.4 && eng.playerBody.length > 2) {
+        if (isTurboEquipped && eng.isBoosting && eng.boostStamina > 5) {
+          const turboMultiplier = 2.25;
+          const drainRate = 8; // 70% stamina savings with legendary turbo!
+          actualSpeed = baseSpeed * turboMultiplier;
+          eng.boostStamina = Math.max(0, eng.boostStamina - drainRate * dt);
+
+          // Drop glowing boost particles behind tail (golden for legendary turbo!)
+          if (Math.random() < 0.45 && eng.playerBody.length > 2) {
             const tail = eng.playerBody[eng.playerBody.length - 1];
-            addEngineParticles(tail.x, tail.y, '#00e5ff', 1);
+            const sparkColor = '#facc15';
+            addEngineParticles(tail.x, tail.y, sparkColor, 2);
           }
         } else {
-          // Regenerate boost stamina
-          eng.boostStamina = Math.min(100, eng.boostStamina + 22 * dt);
+          if (!isTurboEquipped) {
+            eng.isBoosting = false;
+          }
+          // Regenerate boost stamina (2x faster with legendary turbo)
+          const rechargeRate = isTurboEquipped ? 44 : 22;
+          eng.boostStamina = Math.min(100, eng.boostStamina + rechargeRate * dt);
         }
 
         // Move Player Head
@@ -933,6 +1445,72 @@ export function useSnakeGame() {
           }
         }
 
+        // 1.B) Update Mythic Clones (if present and alive in Solo or Multiplayer)
+        if (eng.clones && eng.clones.length > 0) {
+          eng.clones.forEach((clone) => {
+            if (!clone.isAlive || clone.body.length === 0) return;
+
+            // Target position based on player's position and flank offset
+            const targetX = eng.playerX + Math.cos(eng.playerAngle + clone.offsetAngle) * clone.offsetDist;
+            const targetY = eng.playerY + Math.sin(eng.playerAngle + clone.offsetAngle) * clone.offsetDist;
+
+            const cHead = clone.body[0];
+            const cdx = targetX - cHead.x;
+            const cdy = targetY - cHead.y;
+            const cdist = Math.hypot(cdx, cdy);
+            const targetAngle = Math.atan2(cdy, cdx);
+
+            let diffAngle = targetAngle - clone.angle;
+            while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
+            while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
+            clone.angle += diffAngle * Math.min(1, 10 * dt);
+
+            const cloneSpeed = Math.min(cdist * 7, actualSpeed * 1.2);
+            cHead.x += Math.cos(clone.angle) * cloneSpeed * dt;
+            cHead.y += Math.sin(clone.angle) * cloneSpeed * dt;
+
+            // Clone body inverse kinematics
+            for (let b = 1; b < clone.body.length; b++) {
+              const prev = clone.body[b - 1];
+              const curr = clone.body[b];
+              const bdx = prev.x - curr.x;
+              const bdy = prev.y - curr.y;
+              const bdist = Math.hypot(bdx, bdy);
+              if (bdist > SEGMENT_SPACING) {
+                const scale = SEGMENT_SPACING / bdist;
+                curr.x = prev.x - bdx * scale;
+                curr.y = prev.y - bdy * scale;
+              }
+            }
+
+            // Boundary collision check for clone
+            const cDistFromCenter = Math.hypot(cHead.x - center, cHead.y - center);
+            if (cDistFromCenter > ARENA_RADIUS - SEGMENT_RADIUS) {
+              // USER MANDATE: "mythic klonlardan birisi ölünce için hiç birşey çıkmasın"
+              clone.isAlive = false;
+              addEngineParticles(cHead.x, cHead.y, '#ef4444', 28);
+              addEngineFloatingText(cHead.x, cHead.y - 20, '⚠️ Klon İmha Oldu! (Sıfır Düşüş)', '#ef4444');
+            }
+
+            // Bot collision check for clone head:
+            for (let b = 0; b < eng.bots.length; b++) {
+              const bot = eng.bots[b];
+              if (!bot.isAlive) continue;
+              for (let segIdx = 0; segIdx < bot.body.length; segIdx++) {
+                const bSeg = bot.body[segIdx];
+                if (Math.hypot(cHead.x - bSeg.x, cHead.y - bSeg.y) < SEGMENT_RADIUS * 1.6) {
+                  // Clone died by colliding with bot! USER MANDATE: "içinden hiçbir şey çıkmasın"
+                  clone.isAlive = false;
+                  addEngineParticles(cHead.x, cHead.y, '#ef4444', 32);
+                  addEngineFloatingText(cHead.x, cHead.y - 20, '💥 Klon Yok Edildi! (Sıfır Düşüş)', '#ef4444');
+                  break;
+                }
+              }
+              if (!clone.isAlive) break;
+            }
+          });
+        }
+
         // Handle Player Growth queue
         if (eng.playerGrowthPending > 0 && eng.playerBody.length > 1) {
           const lastSeg = eng.playerBody[eng.playerBody.length - 1];
@@ -956,10 +1534,11 @@ export function useSnakeGame() {
           });
         }
 
-        // 2. Tactical Magnetic Suction (If Mıknatıs Girdabı is owned or power-up active)
-        const hasActiveMagnet = hasMagnetVortex || eng.activePowerUps.some((p) => p.type === 'MAGNET');
+        // 2. Tactical Magnetic Suction (If Mıknatıs Girdabı is equipped or power-up active)
+        const isMagnetEquipped = hasMagnetVortex && activeLoadoutRef.current.includes('MAGNET_VORTEX');
+        const hasActiveMagnet = isMagnetEquipped || eng.activePowerUps.some((p) => p.type === 'MAGNET');
         if (hasActiveMagnet) {
-          const magnetRadius = hasMagnetVortex && eng.activePowerUps.some((p) => p.type === 'MAGNET') ? 220 : hasMagnetVortex ? 120 : 160;
+          const magnetRadius = isMagnetEquipped && eng.activePowerUps.some((p) => p.type === 'MAGNET') ? 220 : isMagnetEquipped ? 120 : 160;
           for (let m = 0; m < eng.foods.length; m++) {
             const food = eng.foods[m];
             if (food.type === 'GREEN_POISON' || food.type === 'PURPLE_POISON') continue;
@@ -990,7 +1569,8 @@ export function useSnakeGame() {
               else if (upgrades.agilityLevel === 2) damage *= 0.5;
               else if (upgrades.agilityLevel >= 3) damage *= 0.3;
 
-              if (hasCyberShield) damage *= 0.5; // Siber Kalkan reduces poison damage by 50%!
+              const isShieldEquipped = hasCyberShield && activeLoadoutRef.current.includes('CYBER_SHIELD');
+              if (isShieldEquipped) damage *= 0.5; // Siber Kalkan reduces poison damage by 50%!
 
               damage = Number(damage.toFixed(2));
               eng.lives = Math.max(0, Number((eng.lives - damage).toFixed(2)));
@@ -1054,7 +1634,8 @@ export function useSnakeGame() {
                     '#ea580c'
                   );
                 }
-                eng.playerGrowthPending += 5; // +5 length
+                const isLahmacunEquipped = hasMegaLahmacun && activeLoadoutRef.current.includes('MEGA_LAHMACUN');
+                eng.playerGrowthPending += isLahmacunEquipped ? 6 : 5; // +20% bonus length with equipped Mega Lahmacun!
               } else if (f.type === 'GOLDEN_APPLE') {
                 sound.playGoldenApple();
                 addEngineParticles(f.x, f.y, '#f59e0b', 20);
@@ -1651,6 +2232,16 @@ export function useSnakeGame() {
     };
   }, [gameState, restartGame, setBoosting, activateTimeFreeze]);
 
+  // 10-minute market rotation countdown effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const epoch = Math.floor(Date.now() / MARKET_ROTATION_INTERVAL_MS);
+      const timeLeft = (epoch + 1) * MARKET_ROTATION_INTERVAL_MS - Date.now();
+      setRotationTimeLeftMs(Math.max(0, timeLeft));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Submit high score
   const submitHighScore = useCallback(
     (playerName: string) => {
@@ -1723,8 +2314,24 @@ export function useSnakeGame() {
     hasMegaLahmacun,
     hasMagnetVortex,
     hasCyberShield,
+    hasCloning,
+    hasMythicHearts,
+    hasLegendaryTurbo,
+    isTurboUnlocked: hasLegendaryTurbo && activeLoadout.includes('SUPER_TURBO'),
+    rotationTimeLeftMs,
+    currentRotationCycle: Math.floor(Date.now() / MARKET_ROTATION_INTERVAL_MS),
+    inventory,
+    activeLoadout,
+    equipPower,
+    unequipPower,
+    toggleEquipPower,
+    isPowerActive,
     buyTacticalItem,
     submitHighScore,
+    totalPlaytimeSeconds,
+    claimedRewards,
+    claimPlaytimeReward,
+    lastDailyResetTime,
     setIsLeaderboardOpen,
     setIsUpgradeModalOpen,
     togglePause: () => {

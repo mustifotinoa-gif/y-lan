@@ -53,7 +53,27 @@ export type SnakeSkinId =
   | 'SKIN_GOLD'
   | 'SKIN_GOKBORU'
   | 'SKIN_GALAXY'
-  | 'SKIN_VOLCANO';
+  | 'SKIN_VOLCANO'
+  | 'SKIN_SHADOW_RED';
+
+export type PlaytimeRewardId =
+  | 'REWARD_5M'
+  | 'REWARD_15M'
+  | 'REWARD_30M'
+  | 'REWARD_1H'
+  | 'REWARD_90M'
+  | 'REWARD_2H';
+
+export interface PlaytimeRewardConfig {
+  id: PlaytimeRewardId;
+  label: string;
+  requiredSeconds: number;
+  rewardType: 'COINS' | 'DOUBLE_POINTS_10M' | 'SKIN';
+  rewardValue: number | SnakeSkinId;
+  title: string;
+  description: string;
+  badge: string;
+}
 
 export interface SnakeSkinConfig {
   id: SnakeSkinId;
@@ -169,7 +189,8 @@ export type MarketPowerId =
   | 'MEGA_LAHMACUN'
   | 'MAGNET_VORTEX'
   | 'CYBER_SHIELD'
-  | 'MYTHIC_CLONING';
+  | 'MYTHIC_CLONING'
+  | 'MYTHIC_HEARTS';
 
 export interface MarketPowerConfig {
   id: MarketPowerId;
@@ -193,5 +214,13 @@ export interface CloneSnake {
   offsetAngle: number;
   offsetDist: number;
 }
+
+export const MAX_ACTIVE_LOADOUT_SLOTS = 5;
+
+export interface InventoryState {
+  items: MarketPowerId[];
+  activeLoadout: MarketPowerId[]; // Up to 5 equipped powers
+}
+
 
 

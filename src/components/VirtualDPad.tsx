@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Zap, ShoppingBag, Smartphone, Monitor, Keyboard, MousePointer, Hourglass } from 'lucide-react';
+import { Zap, ShoppingBag, Smartphone, Monitor, Keyboard, MousePointer, Hourglass, Lock } from 'lucide-react';
 
 interface VirtualControlsProps {
   onSteerAngle: (angle: number) => void;
@@ -12,6 +12,7 @@ interface VirtualControlsProps {
   timeFreezeCooldownMs?: number;
   isMultiplayer?: boolean;
   onActivateTimeFreeze?: () => void;
+  isTurboUnlocked?: boolean;
 }
 
 export const VirtualDPad: React.FC<VirtualControlsProps> = ({
@@ -25,6 +26,7 @@ export const VirtualDPad: React.FC<VirtualControlsProps> = ({
   timeFreezeCooldownMs = 0,
   isMultiplayer = false,
   onActivateTimeFreeze,
+  isTurboUnlocked = false,
 }) => {
   const joystickRef = useRef<HTMLDivElement | null>(null);
   const [knobPos, setKnobPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -118,10 +120,21 @@ export const VirtualDPad: React.FC<VirtualControlsProps> = ({
             <span>Fare: Yönlendir</span>
           </span>
           <span>·</span>
-          <span className="flex items-center gap-1 text-amber-400 font-sans font-semibold">
-            <Zap className="w-3 h-3" />
-            <span>Sol Tık / Space: Turbo</span>
-          </span>
+          {isTurboUnlocked ? (
+            <span className="flex items-center gap-1 text-amber-400 font-sans font-semibold">
+              <Zap className="w-3 h-3" />
+              <span>Sol Tık / Space: Turbo</span>
+            </span>
+          ) : (
+            <button
+              onClick={onOpenShop}
+              className="flex items-center gap-1 text-amber-400/80 font-sans font-semibold hover:text-amber-300 transition-colors cursor-pointer"
+              title="Turbo kilitli. Markette satın alın!"
+            >
+              <Lock className="w-3 h-3 text-amber-400" />
+              <span>Turbo: Markette Satılır (5.000 🪙)</span>
+            </button>
+          )}
           <span>·</span>
           <span className="flex items-center gap-1">
             <Keyboard className="w-3 h-3" />
@@ -240,31 +253,50 @@ export const VirtualDPad: React.FC<VirtualControlsProps> = ({
             </button>
 
             {/* Big Turbo Sprint Button */}
-            <button
-              onTouchStart={(e) => {
-                e.preventDefault();
-                triggerHaptic();
-                onBoostStart();
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                onBoostEnd();
-              }}
-              onTouchCancel={(e) => {
-                e.preventDefault();
-                onBoostEnd();
-              }}
-              onMouseDown={onBoostStart}
-              onMouseUp={onBoostEnd}
-              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center font-black text-xs uppercase tracking-wider transition-all shadow-xl active:scale-95 ${
-                isBoosting
-                  ? 'bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-slate-950 scale-105 shadow-orange-500/50 ring-4 ring-amber-300/60'
-                  : 'bg-slate-900/90 border-2 border-amber-500/60 text-amber-400 hover:bg-slate-800'
-              }`}
-            >
-              <Zap className="w-6 h-6 sm:w-7 sm:h-7 fill-current mb-0.5" />
-              <span className="text-[10px] sm:text-xs">TURBO</span>
-            </button>
+            {isTurboUnlocked ? (
+              <button
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  triggerHaptic();
+                  onBoostStart();
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  onBoostEnd();
+                }}
+                onTouchCancel={(e) => {
+                  e.preventDefault();
+                  onBoostEnd();
+                }}
+                onMouseDown={onBoostStart}
+                onMouseUp={onBoostEnd}
+                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center font-black text-xs uppercase tracking-wider transition-all shadow-xl active:scale-95 cursor-pointer ${
+                  isBoosting
+                    ? 'bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-slate-950 scale-105 shadow-orange-500/50 ring-4 ring-amber-300/60'
+                    : 'bg-slate-900/90 border-2 border-amber-500/60 text-amber-400 hover:bg-slate-800'
+                }`}
+              >
+                <Zap className="w-6 h-6 sm:w-7 sm:h-7 fill-current mb-0.5" />
+                <span className="text-[10px] sm:text-xs">TURBO</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  triggerHaptic();
+                  onOpenShop();
+                }}
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center font-black text-xs uppercase tracking-wider transition-all shadow-xl bg-slate-950/90 border-2 border-amber-500/40 text-amber-400/80 hover:bg-slate-900 hover:border-amber-400 active:scale-95 cursor-pointer"
+                title="Turbo kilitli! Markette Efsanevi Turbo satın alın (5.000 Coin)"
+              >
+                <Lock className="w-5 h-5 sm:w-6 sm:h-6 mb-0.5 text-amber-400" />
+                <span className="text-[9px] sm:text-[10px] leading-tight font-black">
+                  TURBO KİLİTLİ
+                </span>
+                <span className="text-[7.5px] font-mono text-amber-300 font-bold">
+                  5.000 🪙 Market
+                </span>
+              </button>
+            )}
           </div>
         </div>
       )}

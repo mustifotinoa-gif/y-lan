@@ -6,6 +6,8 @@ import { TitleScreen } from './components/TitleScreen';
 import { GameOverModal } from './components/GameOverModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { UpgradeModal } from './components/UpgradeModal';
+import { CornerInventory } from './components/CornerInventory';
+import { PlaytimeRewardsWidget } from './components/PlaytimeRewardsWidget';
 import { SettingsModal } from './components/SettingsModal';
 import { PauseOverlay } from './components/PauseOverlay';
 import { useSnakeGame } from './hooks/useSnakeGame';
@@ -72,8 +74,23 @@ export default function App() {
     hasMegaLahmacun,
     hasMagnetVortex,
     hasCyberShield,
+    hasCloning,
+    hasMythicHearts,
+    hasLegendaryTurbo,
+    isTurboUnlocked,
+    rotationTimeLeftMs,
+    currentRotationCycle,
+    inventory,
+    activeLoadout,
+    equipPower,
+    unequipPower,
+    toggleEquipPower,
     buyTacticalItem,
     submitHighScore,
+    totalPlaytimeSeconds,
+    claimedRewards,
+    claimPlaytimeReward,
+    lastDailyResetTime,
     setIsLeaderboardOpen,
     setIsUpgradeModalOpen,
     togglePause,
@@ -313,6 +330,7 @@ export default function App() {
               timeFreezeCooldownMs={timeFreezeCooldownMs}
               isMultiplayer={gameMode === 'MULTIPLAYER'}
               onActivateTimeFreeze={activateTimeFreeze}
+              isTurboUnlocked={isTurboUnlocked}
               onTogglePause={togglePause}
               onToggleMute={toggleMute}
               onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
@@ -361,6 +379,7 @@ export default function App() {
               timeFreezeCooldownMs={timeFreezeCooldownMs}
               isMultiplayer={gameMode === 'MULTIPLAYER'}
               onActivateTimeFreeze={activateTimeFreeze}
+              isTurboUnlocked={isTurboUnlocked}
             />
           </div>
         )}
@@ -421,7 +440,34 @@ export default function App() {
         hasMegaLahmacun={hasMegaLahmacun}
         hasMagnetVortex={hasMagnetVortex}
         hasCyberShield={hasCyberShield}
+        hasCloning={hasCloning}
+        hasMythicHearts={hasMythicHearts}
+        hasLegendaryTurbo={hasLegendaryTurbo}
+        rotationTimeLeftMs={rotationTimeLeftMs}
+        currentRotationCycle={currentRotationCycle}
         onBuyTacticalItem={buyTacticalItem}
+        activeLoadout={activeLoadout}
+        onToggleEquipPower={toggleEquipPower}
+      />
+
+      {/* Küçük Köşe Envanteri (5 Aktif Güç Yuvası & Sonsuz Depolama) */}
+      <CornerInventory
+        inventory={inventory}
+        activeLoadout={activeLoadout}
+        onEquipPower={equipPower}
+        onUnequipPower={unequipPower}
+        onToggleEquipPower={toggleEquipPower}
+        onOpenShop={() => setIsUpgradeModalOpen(true)}
+        onActivateTimeFreeze={activateTimeFreeze}
+        isMultiplayer={gameMode === 'MULTIPLAYER'}
+      />
+
+      {/* Sol Köşe: Dakikalık Hediyeler & Oynama Süresi Ödülleri (Ana menüde de akar & 24 saatte bir yenilenir) */}
+      <PlaytimeRewardsWidget
+        totalPlaytimeSeconds={totalPlaytimeSeconds}
+        claimedRewards={claimedRewards}
+        onClaimReward={claimPlaytimeReward}
+        lastDailyResetTime={lastDailyResetTime}
       />
 
       {/* Settings Modal (Siyah/Beyaz Tema, 20 Müzik, Rastgele, SFX, 120 FPS) */}

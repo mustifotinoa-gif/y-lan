@@ -6,7 +6,7 @@ import {
   SEGMENT_RADIUS,
   SNAKE_SKINS,
 } from '../constants/gameConfig';
-import { FoodItem, LiveStandingItem, SnakeSkinId, SnakeSkinConfig } from '../types/game';
+import { FoodItem, LiveStandingItem, SnakeSkinId, SnakeSkinConfig, CloneSnake } from '../types/game';
 import { RemoteHumanPlayer, ChatMessage } from '../services/multiplayer';
 import { Maximize2, Minimize2, Zap, Crown, Hourglass, Users, Radio, MessageSquare, Send } from 'lucide-react';
 
@@ -508,6 +508,48 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           ctx.shadowColor = '#059669';
           ctx.shadowBlur = 6;
           ctx.fillText(`👤 ${rp.name}`, rx, ry - rSegRad - 6 * zoom);
+          ctx.restore();
+        });
+      }
+
+      // 5.B Draw Mythic Companion Clones (if active in Solo or Multiplayer)
+      if (eng.clones && eng.clones.length > 0) {
+        eng.clones.forEach((clone: CloneSnake) => {
+          if (!clone.isAlive || clone.body.length === 0) return;
+          const cRad = (SEGMENT_RADIUS - 1.5) * zoom;
+
+          // Draw clone segments with glowing red/crimson holographic finish
+          for (let c = clone.body.length - 1; c >= 0; c--) {
+            const pt = clone.body[c];
+            const cx = toScreenX(pt.x);
+            const cy = toScreenY(pt.y);
+
+            ctx.save();
+            ctx.fillStyle = c === 0 ? 'rgba(239, 68, 68, 0.95)' : 'rgba(220, 38, 38, 0.75)';
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 10 * zoom;
+            ctx.beginPath();
+            ctx.arc(cx, cy, cRad, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#fca5a5';
+            ctx.lineWidth = 1.2 * zoom;
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Clone Head Tag
+          const cHead = clone.body[0];
+          const chx = toScreenX(cHead.x);
+          const chy = toScreenY(cHead.y);
+
+          ctx.save();
+          ctx.font = `bold ${Math.max(9, Math.round(10 * zoom))}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#ef4444';
+          ctx.shadowColor = '#dc2626';
+          ctx.shadowBlur = 6;
+          ctx.fillText(`🔴 ${clone.name}`, chx, chy - cRad - 4 * zoom);
           ctx.restore();
         });
       }
