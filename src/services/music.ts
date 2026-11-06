@@ -347,7 +347,12 @@ class MusicEngine {
     return this.isShuffle;
   }
 
+  private lastActiveTrack: MusicTrack = 'PHONK_DRIFT';
+
   public setTrack(track: MusicTrack) {
+    if (track !== 'OFF') {
+      this.lastActiveTrack = track;
+    }
     this.currentTrack = track;
     try {
       localStorage.setItem('cybersnake_music_track', track);
@@ -357,6 +362,26 @@ class MusicEngine {
       this.stop();
     } else {
       this.start();
+    }
+  }
+
+  public isMusicOff(): boolean {
+    return this.currentTrack === 'OFF';
+  }
+
+  /**
+   * Toggles background music between OFF and the previous/active track
+   */
+  public toggleMusic(): MusicTrack {
+    if (this.currentTrack !== 'OFF') {
+      this.lastActiveTrack = this.currentTrack;
+      this.setTrack('OFF');
+      return 'OFF';
+    } else {
+      const restored =
+        this.lastActiveTrack && this.lastActiveTrack !== 'OFF' ? this.lastActiveTrack : 'PHONK_DRIFT';
+      this.setTrack(restored);
+      return restored;
     }
   }
 

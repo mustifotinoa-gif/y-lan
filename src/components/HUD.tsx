@@ -16,9 +16,12 @@ import {
   ShoppingBag,
   Hourglass,
   Lock,
+  Music,
+  Bug,
 } from 'lucide-react';
 import { POWER_UP_CONFIG } from '../constants/gameConfig';
 import { ActivePowerUp, LiveStandingItem } from '../types/game';
+import { MusicTrack, music } from '../services/music';
 
 interface HUDProps {
   score: number;
@@ -38,6 +41,8 @@ interface HUDProps {
   liveStandings: LiveStandingItem[];
   isPaused: boolean;
   isMuted: boolean;
+  currentTrack?: MusicTrack;
+  onToggleMusic?: () => void;
   timeFreezeCharges?: number;
   timeFreezeRemainingMs?: number;
   timeFreezeCooldownMs?: number;
@@ -50,6 +55,7 @@ interface HUDProps {
   onOpenShop: () => void;
   onRestart: () => void;
   onGoToMenu: () => void;
+  onOpenReportBug?: () => void;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -70,6 +76,8 @@ export const HUD: React.FC<HUDProps> = ({
   liveStandings,
   isPaused,
   isMuted,
+  currentTrack = 'PHONK_DRIFT',
+  onToggleMusic,
   timeFreezeCharges = 0,
   timeFreezeRemainingMs = 0,
   timeFreezeCooldownMs = 0,
@@ -82,6 +90,7 @@ export const HUD: React.FC<HUDProps> = ({
   onOpenShop,
   onRestart,
   onGoToMenu,
+  onOpenReportBug,
 }) => {
   const [showStandings, setShowStandings] = useState(false);
 
@@ -229,14 +238,48 @@ export const HUD: React.FC<HUDProps> = ({
             {isPaused ? <Play className="w-4 h-4 text-emerald-400 fill-emerald-400" /> : <Pause className="w-4 h-4" />}
           </button>
 
-          {/* Mute Button */}
+          {/* Music Toggle Button (Oyun Sırasında Müziği Kapat / Aç) */}
+          {onToggleMusic && (
+            <button
+              onClick={onToggleMusic}
+              title={
+                currentTrack === 'OFF'
+                  ? 'Müziği Aç (N)'
+                  : `Müziği Kapat (N) · Şu an: ${music.getTrackInfo().label}`
+              }
+              className={`p-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1 border cursor-pointer ${
+                currentTrack === 'OFF'
+                  ? 'text-rose-400 hover:text-rose-300 bg-rose-950/40 border-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.25)]'
+                  : 'text-cyan-300 hover:text-cyan-200 bg-cyan-950/60 border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.25)]'
+              }`}
+              aria-label="Müziği Kapat veya Aç"
+            >
+              <Music className={`w-4 h-4 ${currentTrack !== 'OFF' ? 'text-cyan-400 animate-pulse' : 'text-rose-400 opacity-80'}`} />
+              <span className="text-[10px] font-mono font-bold hidden xs:inline">
+                {currentTrack === 'OFF' ? 'Müzik Kapalı' : 'Müzik'}
+              </span>
+            </button>
+          )}
+
+          {/* Mute SFX Button */}
           <button
             onClick={onToggleMute}
-            title={isMuted ? 'Sesi Aç (M)' : 'Sesi Kapat (M)'}
+            title={isMuted ? 'Efekt Seslerini Aç (M)' : 'Efekt Seslerini Kapat (M)'}
             className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-slate-300" />}
           </button>
+
+          {/* Bug Report Button */}
+          {onOpenReportBug && (
+            <button
+              onClick={onOpenReportBug}
+              title="Hata & Bug Bildir (Yapımcıya İlet)"
+              className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/15 transition-colors cursor-pointer border border-amber-500/20"
+            >
+              <Bug className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Leaderboard Button */}
           <button

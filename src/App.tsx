@@ -8,13 +8,17 @@ import { LeaderboardModal } from './components/LeaderboardModal';
 import { UpgradeModal } from './components/UpgradeModal';
 import { CornerInventory } from './components/CornerInventory';
 import { PlaytimeRewardsWidget } from './components/PlaytimeRewardsWidget';
+import { GameRulesModal } from './components/GameRulesModal';
 import { SettingsModal } from './components/SettingsModal';
 import { PauseOverlay } from './components/PauseOverlay';
+import { BugReportModal } from './components/BugReportModal';
+import { DeveloperInboxModal } from './components/DeveloperInboxModal';
+import { bugReportsService } from './services/bugReports';
 import { useSnakeGame } from './hooks/useSnakeGame';
 import { resetHighScoresToDefault } from './services/storage';
 import { music, MusicTrack } from './services/music';
-import { Trophy, HelpCircle, X, Settings, Coins, Music, Zap, Home, Dices, Shuffle } from 'lucide-react';
-import { Difficulty } from './types/game';
+import { Trophy, HelpCircle, X, Settings, Coins, Music, Zap, Home, Dices, Shuffle, ShieldAlert, Volume2, VolumeX, Bug, Mail } from 'lucide-react';
+import { Difficulty, GameMode } from './types/game';
 
 export default function App() {
   const {
@@ -100,6 +104,39 @@ export default function App() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('NORMAL');
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
+  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
+  const [isDeveloperInboxOpen, setIsDeveloperInboxOpen] = useState(false);
+  const [unreadBugReportsCount, setUnreadBugReportsCount] = useState<number>(0);
+  const [pendingStartArgs, setPendingStartArgs] = useState<{ mode: GameMode; room?: string; name?: string } | null>(null);
+
+  // Poll unread bug reports count
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCount = async () => {
+      try {
+        const data = await bugReportsService.getReports();
+        if (isMounted) {
+          setUnreadBugReportsCount(data.unreadCount);
+        }
+      } catch {}
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleAcceptRulesAndStart = () => {
+    setIsRulesModalOpen(false);
+    if (pendingStartArgs) {
+      music.ensureAudioContext();
+      startGame(selectedDifficulty, pendingStartArgs.mode, pendingStartArgs.room, pendingStartArgs.name);
+      setPendingStartArgs(null);
+    }
+  };
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       const saved = localStorage.getItem('cybersnake_theme_v1');
@@ -111,6 +148,39 @@ export default function App() {
 
   const [currentTrack, setCurrentTrack] = useState<MusicTrack>(() => music.getTrack());
   const [musicVolume, setMusicVolume] = useState<number>(() => music.getVolume());
+
+  const handleToggleMusic = () => {
+    const next = music.toggleMusic();
+    setCurrentTrack(next);
+    if (gameState === 'PLAYING' && engineRef.current) {
+      engineRef.current.floatingTexts.push({
+        id: `ft-${Date.now()}-${Math.random()}`,
+        x: engineRef.current.playerX,
+        y: engineRef.current.playerY - 30,
+        text: next === 'OFF' ? '🔇 MÜZİK KAPATILDI' : `🎵 MÜZİK: ${music.getTrackInfo().label.toUpperCase()}`,
+        color: next === 'OFF' ? '#ef4444' : '#22d3ee',
+        alpha: 1,
+        life: 0,
+      });
+    }
+  };
+
+  // Keyboard shortcut [N] to toggle background music on/off anytime
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      if (e.key === 'n' || e.key === 'N') {
+        handleToggleMusic();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameState, currentTrack]);
 
   // Apply dark / light theme to document element
   useEffect(() => {
@@ -199,6 +269,16 @@ export default function App() {
             Nasıl Oynanır?
           </button>
           <button
+            onClick={() => {
+              setPendingStartArgs(null);
+              setIsRulesModalOpen(true);
+            }}
+            className="hover:text-red-400 transition-colors cursor-pointer flex items-center gap-1 text-slate-300"
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+            <span>Oyun Kuralları</span>
+          </button>
+          <button
             onClick={() => setIsUpgradeModalOpen(true)}
             className="hover:text-amber-400 transition-colors cursor-pointer flex items-center gap-1"
           >
@@ -246,6 +326,30 @@ export default function App() {
             </span>
           </button>
 
+          {/* Quick Turn Off / On Music Button */}
+          <button
+            onClick={handleToggleMusic}
+            className={`px-2 py-1.5 rounded-xl border transition-colors active:scale-95 flex items-center gap-1 text-[11px] font-bold ${
+              currentTrack === 'OFF'
+                ? 'border-rose-500/50 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25'
+                : 'border-slate-700/80 bg-slate-900 text-slate-400 hover:text-white'
+            }`}
+            title={currentTrack === 'OFF' ? 'Müziği Başlat (N)' : 'Müziği Kapat (N)'}
+            aria-label="Müziği Aç veya Kapat"
+          >
+            {currentTrack === 'OFF' ? (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden xl:inline text-rose-400 font-mono">Müzik Kapalı</span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden xl:inline text-slate-400 font-mono">Kapat</span>
+              </>
+            )}
+          </button>
+
           {/* Quick Random Music (20 Şarkı Arasından Rastgele) */}
           <button
             onClick={handleRandomTrack}
@@ -260,11 +364,36 @@ export default function App() {
           {/* Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="p-2 rounded-xl border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-cyan-400 transition-colors active:scale-95"
+            className="p-2 rounded-xl border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-cyan-400 transition-colors active:scale-95 cursor-pointer"
             title="Ayarlar (Tema, Müzik, SFX)"
             aria-label="Ayarlar"
           >
             <Settings className="w-4 h-4" />
+          </button>
+
+          {/* Hata & Bug Bildir Butonu */}
+          <button
+            onClick={() => setIsBugReportOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition-all shadow-sm active:scale-95 cursor-pointer"
+            title="Hata & Bug Bildir (Yapımcıya İlet)"
+          >
+            <Bug className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden xl:inline">Hata Bildir</span>
+          </button>
+
+          {/* Geliştirici Özel Posta Kutusu (mustifotinoa@gmail.com) */}
+          <button
+            onClick={() => setIsDeveloperInboxOpen(true)}
+            className="relative flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 transition-all shadow-sm active:scale-95 cursor-pointer"
+            title="Geliştirici Posta Kutusu (mustifotinoa@gmail.com)"
+          >
+            <Mail className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Posta Kutusu</span>
+            {unreadBugReportsCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono text-[9px] font-black animate-pulse shadow-md">
+                {unreadBugReportsCount}
+              </span>
+            )}
           </button>
 
           {/* Menüye Gitme Butonu (User explicit request: menüye gitme olsun) */}
@@ -286,9 +415,16 @@ export default function App() {
         {gameState === 'TITLE' ? (
           <TitleScreen
             onStartGame={(mode, room, name) => {
-              music.ensureAudioContext();
-              startGame(selectedDifficulty, mode, room, name);
+              setPendingStartArgs({ mode, room, name });
+              setIsRulesModalOpen(true);
             }}
+            onOpenRules={() => {
+              setPendingStartArgs(null);
+              setIsRulesModalOpen(true);
+            }}
+            onOpenReportBug={() => setIsBugReportOpen(true)}
+            onOpenInbox={() => setIsDeveloperInboxOpen(true)}
+            unreadBugReportsCount={unreadBugReportsCount}
             onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
             onOpenShop={() => setIsUpgradeModalOpen(true)}
             selectedDifficulty={selectedDifficulty}
@@ -325,6 +461,8 @@ export default function App() {
               liveStandings={liveStandings}
               isPaused={gameState === 'PAUSED'}
               isMuted={isMuted}
+              currentTrack={currentTrack}
+              onToggleMusic={handleToggleMusic}
               timeFreezeCharges={timeFreezeCharges}
               timeFreezeRemainingMs={timeFreezeRemainingMs}
               timeFreezeCooldownMs={timeFreezeCooldownMs}
@@ -335,6 +473,7 @@ export default function App() {
               onToggleMute={toggleMute}
               onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
               onOpenShop={() => setIsUpgradeModalOpen(true)}
+              onOpenReportBug={() => setIsBugReportOpen(true)}
               onRestart={restartGame}
               onGoToMenu={goToMenu}
             />
@@ -363,6 +502,8 @@ export default function App() {
                   onRestart={restartGame}
                   onGoToMenu={goToMenu}
                   onOpenShop={() => setIsUpgradeModalOpen(true)}
+                  currentTrack={currentTrack}
+                  onToggleMusic={handleToggleMusic}
                 />
               )}
             </div>
@@ -484,6 +625,39 @@ export default function App() {
         isMuted={isMuted}
         onToggleMute={toggleMute}
         fps={currentFps}
+      />
+
+      {/* Siber Arena Oyun Kuralları Modalı (Hack Yasak, Bug Bildir, Saygılı Konuş, Başlama Onayı) */}
+      <GameRulesModal
+        isOpen={isRulesModalOpen}
+        onClose={() => {
+          setIsRulesModalOpen(false);
+          setPendingStartArgs(null);
+        }}
+        onAcceptAndStart={handleAcceptRulesAndStart}
+        isStartingGame={Boolean(pendingStartArgs)}
+      />
+
+      {/* Hata Bildir Modalı (Direkt mustifotinoa@gmail.com) */}
+      <BugReportModal
+        isOpen={isBugReportOpen}
+        onClose={() => {
+          setIsBugReportOpen(false);
+          bugReportsService.getReports().then((d) => setUnreadBugReportsCount(d.unreadCount));
+        }}
+        playerName={playerName}
+        gameMode={gameMode}
+        onOpenInbox={() => setIsDeveloperInboxOpen(true)}
+      />
+
+      {/* Geliştirici Özel Posta Kutusu (mustifotinoa@gmail.com) */}
+      <DeveloperInboxModal
+        isOpen={isDeveloperInboxOpen}
+        onClose={() => {
+          setIsDeveloperInboxOpen(false);
+          bugReportsService.getReports().then((d) => setUnreadBugReportsCount(d.unreadCount));
+        }}
+        onOpenReportBug={() => setIsBugReportOpen(true)}
       />
 
       {/* Rules & Help Modal */}

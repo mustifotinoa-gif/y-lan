@@ -1,0 +1,25 @@
+[
+  {
+    "id": "report-1793983651375-120",
+    "senderName": "Oyuncu Ali",
+    "senderEmail": "",
+    "category": "Oyun İçi Bug & Hata",
+    "description": "Haritada sınır köşesinde bot sıkıştı.",
+    "deviceInfo": "",
+    "gameMode": "SOLO",
+    "createdAt": "2026-11-06T16:47:31.375Z",
+    "status": "NEW"
+  },
+  {
+    "id": "report-welcome-1",
+    "senderName": "Sistem Yöneticisi",
+    "senderEmail": "mustifotinoa@gmail.com",
+    "category": "Sistem",
+    "description": "Mustafa Kemal Siber Arena geliştirici posta kutunuz başarıyla aktif edildi! Oyuncuların bildirdiği tüm hata, öneri ve bug raporları anında bu kutuda toplanacaktır.",
+    "deviceInfo": "Siber Arena v2.5 / Sunucu",
+    "gameMode": "GLOBAL",
+    "createdAt": "2026-11-06T16:47:15.020Z",
+    "status": "READ",
+    "developerNotes": "Hoş geldiniz! Raporları buradan çözüldü olarak işaretleyebilir veya silebilirsiniz."
+  }
+]

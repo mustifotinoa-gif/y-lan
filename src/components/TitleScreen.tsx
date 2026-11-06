@@ -19,6 +19,9 @@ import {
   Bot,
   Radio,
   Gamepad2,
+  ShieldAlert,
+  Bug,
+  Mail,
 } from 'lucide-react';
 import { Difficulty, HighScoreEntry, GameMode } from '../types/game';
 import { DIFFICULTIES } from '../constants/gameConfig';
@@ -27,6 +30,10 @@ interface TitleScreenProps {
   onStartGame: (mode: GameMode, roomId?: string, playerName?: string) => void;
   onOpenLeaderboard: () => void;
   onOpenShop: () => void;
+  onOpenRules?: () => void;
+  onOpenReportBug?: () => void;
+  onOpenInbox?: () => void;
+  unreadBugReportsCount?: number;
   selectedDifficulty: Difficulty;
   onChangeDifficulty: (diff: Difficulty) => void;
   highScore: number;
@@ -45,6 +52,10 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   onStartGame,
   onOpenLeaderboard,
   onOpenShop,
+  onOpenRules,
+  onOpenReportBug,
+  onOpenInbox,
+  unreadBugReportsCount = 0,
   selectedDifficulty,
   onChangeDifficulty,
   highScore,
@@ -361,18 +372,62 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             </button>
           </div>
 
-          {/* Controls Info Footer */}
-          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 text-[11px] text-slate-400 mt-3.5">
-            <span className="flex items-center gap-1">
-              <Compass className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Fare / Dokunmatik / Joystick</span>
-            </span>
-            <span>·</span>
-            <span>Space / Dokun: Turbo</span>
-            <span>·</span>
-            <span>G: Zaman Durdur (10s · 150s Bekleme)</span>
-            <span>·</span>
-            <span>U: Market</span>
+          {/* Controls Info Footer & Rules Button */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 mt-3.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1">
+                <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Fare / Dokunmatik / Joystick</span>
+              </span>
+              <span>·</span>
+              <span>Space / Dokun: Turbo</span>
+              <span>·</span>
+              <span>G: Zaman Durdur</span>
+              <span>·</span>
+              <span>U: Market</span>
+              <span>·</span>
+              <span>N: Müzik Kapat</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
+              {onOpenReportBug && (
+                <button
+                  type="button"
+                  onClick={onOpenReportBug}
+                  className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Bug className="w-3.5 h-3.5 text-amber-400" />
+                  <span>🐛 Hata Bildir</span>
+                </button>
+              )}
+
+              {onOpenInbox && (
+                <button
+                  type="button"
+                  onClick={onOpenInbox}
+                  className="relative px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 hover:text-cyan-200 text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Mail className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>📬 Posta Kutusu</span>
+                  {unreadBugReportsCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono text-[9px] font-black animate-pulse">
+                      {unreadBugReportsCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {onOpenRules && (
+                <button
+                  type="button"
+                  onClick={onOpenRules}
+                  className="px-3 py-1 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-500/50 hover:border-red-400 text-red-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                  <span>📜 Oyun Kuralları</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

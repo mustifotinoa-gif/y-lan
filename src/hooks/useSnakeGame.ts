@@ -973,16 +973,24 @@ export function useSnakeGame() {
     } catch {}
   }, [unlockedSkins]);
 
-  // Initialize Bots
+  // Initialize Bots: Safely placed inside arena and oriented inward
   const initBots = useCallback((diff: Difficulty): BotSnake[] => {
     const count = DIFFICULTIES[diff]?.botCount ?? 3;
-    return BOT_CONFIGS.slice(0, count).map((cfg) => {
+    const center = ARENA_SIZE / 2;
+    return BOT_CONFIGS.slice(0, count).map((cfg, idx) => {
+      // Safely spawn bots distributed inside the arena circle, well away from border
+      const spawnRadius = 350 + (idx * 110) % (ARENA_RADIUS - 450);
+      const spawnAngle = (idx / Math.max(1, count)) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const headX = center + Math.cos(spawnAngle) * spawnRadius;
+      const headY = center + Math.sin(spawnAngle) * spawnRadius;
+
+      // Heading towards the center with small random deviation
+      const angle = Math.atan2(center - headY, center - headX) + (Math.random() - 0.5) * 0.4;
       const initialBody: Point[] = [];
-      const angle = Math.random() * Math.PI * 2;
       for (let i = 0; i < cfg.initialLength; i++) {
         initialBody.push({
-          x: cfg.initialX - Math.cos(angle) * i * SEGMENT_SPACING,
-          y: cfg.initialY - Math.sin(angle) * i * SEGMENT_SPACING,
+          x: headX - Math.cos(angle) * i * SEGMENT_SPACING,
+          y: headY - Math.sin(angle) * i * SEGMENT_SPACING,
         });
       }
       return {
@@ -1328,17 +1336,28 @@ export function useSnakeGame() {
         );
       }
 
-      // Convert body segments into BOT_REMAINS food items
-      const droppedRemains: FoodItem[] = bot.body.map((seg, idx) => ({
-        id: `remains-${Date.now()}-${idx}-${Math.random()}`,
-        x: seg.x + (Math.random() - 0.5) * 8,
-        y: seg.y + (Math.random() - 0.5) * 8,
-        type: 'BOT_REMAINS' as const,
-        points: 30,
-        color: '#a855f7',
-        growth: 1,
-        radius: 9,
-      }));
+      // Convert body segments into BOT_REMAINS food items (strictly clamped inside arena boundaries)
+      const center = ARENA_SIZE / 2;
+      const droppedRemains: FoodItem[] = bot.body.map((seg, idx) => {
+        const segDist = Math.hypot(seg.x - center, seg.y - center);
+        let remainX = seg.x + (Math.random() - 0.5) * 8;
+        let remainY = seg.y + (Math.random() - 0.5) * 8;
+        if (segDist >= ARENA_RADIUS - 30) {
+          const ang = Math.atan2(seg.y - center, seg.x - center);
+          remainX = center + Math.cos(ang) * (ARENA_RADIUS - 40);
+          remainY = center + Math.sin(ang) * (ARENA_RADIUS - 40);
+        }
+        return {
+          id: `remains-${Date.now()}-${idx}-${Math.random()}`,
+          x: remainX,
+          y: remainY,
+          type: 'BOT_REMAINS' as const,
+          points: 30,
+          color: '#a855f7',
+          growth: 1,
+          radius: 9,
+        };
+      });
 
       engineRef.current.foods.push(...droppedRemains);
 
@@ -1771,12 +1790,12 @@ export function useSnakeGame() {
               // 1. Goal alignment score (desire to face target)
               let rayScore = Math.cos(testAngle - baseTargetAngle) * 35;
 
-              // 2. Arena wall avoidance
+              // 2. Arena wall avoidance (Heavily penalize heading towards border)
               const sampleDistCenter = Math.hypot(sampleX - center, sampleY - center);
-              if (sampleDistCenter > ARENA_RADIUS - 60) {
-                rayScore -= 2000;
-              } else if (sampleDistCenter > ARENA_RADIUS - 140) {
-                rayScore -= 300 * ((sampleDistCenter - (ARENA_RADIUS - 140)) / 80);
+              if (sampleDistCenter > ARENA_RADIUS - 70) {
+                rayScore -= 10000; // Immediate fatal obstacle
+              } else if (sampleDistCenter > ARENA_RADIUS - 180) {
+                rayScore -= 1500 * ((sampleDistCenter - (ARENA_RADIUS - 180)) / 110);
               }
 
               // 3. Player body collision avoidance (Bots avoid hitting player's body and dying!)
@@ -1867,6 +1886,21 @@ export function useSnakeGame() {
             // Spawn boost sparks when bot is sprinting
             if (isBotBoosting && Math.random() < 0.25) {
               addEngineParticles(bHead.x, bHead.y, bot.headColor, 1);
+            }
+
+            // 1. Check if Bot hits Arena Circular Boundary (Sınıra değince ölsünler kuralı)
+            const botDistFromCenter = Math.hypot(nextHeadX - center, nextHeadY - center);
+            if (botDistFromCenter >= ARENA_RADIUS - SEGMENT_RADIUS) {
+              // Bot hit the arena boundary -> EXPLODES & DIES IMMEDIATELY!
+              eliminateBot(bot.id, false);
+              addEngineParticles(nextHeadX, nextHeadY, bot.color, 25);
+              addEngineFloatingText(
+                nextHeadX,
+                nextHeadY - 20,
+                `⚡ ${bot.name.toUpperCase()} SINIRA ÇARPTI!`,
+                '#ef4444'
+              );
+              return;
             }
 
           // Check if Bot crashes into Player Body (Snake.io core rule: BOT EXPLODES!)
@@ -2047,8 +2081,10 @@ export function useSnakeGame() {
               if (bot.respawnInSeconds > 1) {
                 bot.respawnInSeconds -= 1;
               } else {
-                const p = getRandomArenaPoint(300);
-                const angle = Math.random() * Math.PI * 2;
+                const center = ARENA_SIZE / 2;
+                const p = getRandomArenaPoint(380); // Spawn well away from boundary
+                const angleToCenter = Math.atan2(center - p.y, center - p.x);
+                const angle = angleToCenter + (Math.random() - 0.5) * 0.5; // Heading inward
                 const respawnBody: Point[] = [];
                 const startLen = 14;
                 for (let i = 0; i < startLen; i++) {

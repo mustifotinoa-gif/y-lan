@@ -1,14 +1,24 @@
 import React from 'react';
-import { Play, RotateCcw, Home, ShoppingBag } from 'lucide-react';
+import { Play, RotateCcw, Home, ShoppingBag, Music, VolumeX } from 'lucide-react';
+import { MusicTrack, music } from '../services/music';
 
 interface PauseOverlayProps {
   onResume: () => void;
   onRestart: () => void;
   onGoToMenu: () => void;
   onOpenShop?: () => void;
+  currentTrack?: MusicTrack;
+  onToggleMusic?: () => void;
 }
 
-export const PauseOverlay: React.FC<PauseOverlayProps> = ({ onResume, onRestart, onGoToMenu, onOpenShop }) => {
+export const PauseOverlay: React.FC<PauseOverlayProps> = ({
+  onResume,
+  onRestart,
+  onGoToMenu,
+  onOpenShop,
+  currentTrack,
+  onToggleMusic,
+}) => {
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md rounded-2xl animate-fade-in">
       <div className="text-center p-6 max-w-xs w-full bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl">
@@ -45,6 +55,29 @@ export const PauseOverlay: React.FC<PauseOverlayProps> = ({ onResume, onRestart,
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Yeniden Başlat (R)</span>
           </button>
+
+          {onToggleMusic && (
+            <button
+              onClick={onToggleMusic}
+              className={`w-full py-2 px-4 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-2 active:scale-95 border cursor-pointer ${
+                currentTrack === 'OFF'
+                  ? 'bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 border-rose-500/40'
+                  : 'bg-slate-850 hover:bg-slate-800 text-cyan-300 border-slate-700'
+              }`}
+            >
+              {currentTrack === 'OFF' ? (
+                <>
+                  <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Müziği Aç (N)</span>
+                </>
+              ) : (
+                <>
+                  <Music className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                  <span>Müziği Kapat (N)</span>
+                </>
+              )}
+            </button>
+          )}
 
           <button
             onClick={onGoToMenu}

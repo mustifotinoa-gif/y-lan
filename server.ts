@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -70,6 +71,168 @@ app.get('/api/rooms', (req, res) => {
     playerCount: r.players.size,
   }));
   res.json({ rooms: roomList });
+});
+
+// ==========================================
+// DEVELOPER INBOX & BUG REPORTING SYSTEM
+// Target Developer: mustifotinoa@gmail.com
+// ==========================================
+interface BugReport {
+  id: string;
+  senderName: string;
+  senderEmail?: string;
+  category: string;
+  description: string;
+  deviceInfo?: string;
+  gameMode?: string;
+  createdAt: string;
+  status: 'NEW' | 'READ' | 'RESOLVED';
+  developerNotes?: string;
+}
+
+const DATA_DIR = path.join(__dirname, 'data');
+const BUG_REPORTS_FILE = path.join(DATA_DIR, 'bug-reports.json');
+
+function loadBugReports(): BugReport[] {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(BUG_REPORTS_FILE)) {
+      const content = fs.readFileSync(BUG_REPORTS_FILE, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.error('Failed to load bug reports file:', err);
+  }
+
+  // Initial welcome developer mail for mustifotinoa@gmail.com
+  const initialReports: BugReport[] = [
+    {
+      id: 'report-welcome-1',
+      senderName: 'Sistem Yöneticisi',
+      senderEmail: 'mustifotinoa@gmail.com',
+      category: 'Sistem',
+      description:
+        'Mustafa Kemal Siber Arena geliştirici posta kutunuz başarıyla aktif edildi! Oyuncuların bildirdiği tüm hata, öneri ve bug raporları anında bu kutuda toplanacaktır.',
+      deviceInfo: 'Siber Arena v2.5 / Sunucu',
+      gameMode: 'GLOBAL',
+      createdAt: new Date().toISOString(),
+      status: 'READ',
+      developerNotes: 'Hoş geldiniz! Raporları buradan çözüldü olarak işaretleyebilir veya silebilirsiniz.',
+    },
+  ];
+  saveBugReports(initialReports);
+  return initialReports;
+}
+
+function saveBugReports(reports: BugReport[]) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(BUG_REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to save bug reports file:', err);
+  }
+}
+
+let inMemoryBugReports: BugReport[] = loadBugReports();
+
+// GET all reports
+app.get('/api/bug-reports', (req, res) => {
+  const unreadCount = inMemoryBugReports.filter((r) => r.status === 'NEW').length;
+  res.json({
+    reports: inMemoryBugReports,
+    unreadCount,
+    recipientEmail: 'mustifotinoa@gmail.com',
+  });
+});
+
+// POST new bug report from player
+app.post('/api/bug-reports', (req, res) => {
+  try {
+    const { senderName, senderEmail, category, description, deviceInfo, gameMode } = req.body;
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({ error: 'Açıklama boş olamaz' });
+    }
+
+    const newReport: BugReport = {
+      id: `report-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      senderName: (senderName && String(senderName).trim()) || 'Anonim Oyuncu',
+      senderEmail: (senderEmail && String(senderEmail).trim()) || '',
+      category: category || 'Genel Hata',
+      description: String(description).trim(),
+      deviceInfo: deviceInfo || '',
+      gameMode: gameMode || 'SOLO',
+      createdAt: new Date().toISOString(),
+      status: 'NEW',
+    };
+
+    inMemoryBugReports.unshift(newReport);
+    saveBugReports(inMemoryBugReports);
+
+    // Broadcast new bug report to connected developer client
+    const notifyPayload = JSON.stringify({
+      type: 'new_bug_report',
+      report: newReport,
+      unreadCount: inMemoryBugReports.filter((r) => r.status === 'NEW').length,
+    });
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(notifyPayload);
+      }
+    });
+
+    console.log(`📩 Yeni Hata Raporu Alındı: "${newReport.category}" - ${newReport.senderName} (${newReport.description.substring(0, 40)}...)`);
+
+    res.status(201).json({
+      success: true,
+      report: newReport,
+      message: 'Hata raporunuz geliştiriciye (mustifotinoa@gmail.com) başarıyla iletildi!',
+    });
+  } catch (err) {
+    console.error('Error creating bug report:', err);
+    res.status(500).json({ error: 'Rapor kaydedilemedi' });
+  }
+});
+
+// PATCH update report status (read/resolved/notes)
+app.patch('/api/bug-reports/:id', (req, res) => {
+  const { id } = req.params;
+  const { status, developerNotes } = req.body;
+
+  const target = inMemoryBugReports.find((r) => r.id === id);
+  if (!target) {
+    return res.status(404).json({ error: 'Rapor bulunamadı' });
+  }
+
+  if (status && ['NEW', 'READ', 'RESOLVED'].includes(status)) {
+    target.status = status;
+  }
+  if (developerNotes !== undefined) {
+    target.developerNotes = String(developerNotes);
+  }
+
+  saveBugReports(inMemoryBugReports);
+  const unreadCount = inMemoryBugReports.filter((r) => r.status === 'NEW').length;
+  res.json({ success: true, report: target, unreadCount });
+});
+
+// DELETE report
+app.delete('/api/bug-reports/:id', (req, res) => {
+  const { id } = req.params;
+  const initialLength = inMemoryBugReports.length;
+  inMemoryBugReports = inMemoryBugReports.filter((r) => r.id !== id);
+
+  if (inMemoryBugReports.length === initialLength) {
+    return res.status(404).json({ error: 'Rapor bulunamadı' });
+  }
+
+  saveBugReports(inMemoryBugReports);
+  const unreadCount = inMemoryBugReports.filter((r) => r.status === 'NEW').length;
+  res.json({ success: true, unreadCount });
 });
 
 // WebSocket Connection Management
