@@ -571,10 +571,21 @@ export const MARKET_POWERS: Record<MarketPowerId, MarketPowerConfig> = {
     badgeLabel: 'Nadir Güç (Mavi)',
     tagColor: 'from-blue-600 via-sky-500 to-blue-500',
   },
+  GODLY_TELEPORT: {
+    id: 'GODLY_TELEPORT',
+    name: 'Tanrısal Işınlanma (2 Hak)',
+    rarity: 'GODLY',
+    chancePercent: 0.001,
+    chanceLabel: '%000,1',
+    price: 500000,
+    description: 'İki kez haritada istediğiniz herhangi bir noktaya anında ışınlanın! Ekrana tıklayarak veya [X] tuşuyla hedef belirleyip ışınlanabilirsiniz. Işınlanma anında 2 saniye tam hasar almazlık sağlar.',
+    badgeLabel: 'Tanrısal Güç (Lâcivert)',
+    tagColor: 'from-blue-950 via-indigo-950 to-blue-900',
+  },
 };
 
 // Exact user rarity color mapping:
-// Mythic: Kırmızı | Legendary: Sarı | Epic: Mor | Rare: Mavi | Common: Yeşil
+// Godly: Lâcivert | Mythic: Kırmızı | Legendary: Sarı | Epic: Mor | Rare: Mavi | Common: Yeşil
 export const RARITY_CONFIGS: Record<
   MarketRarity,
   {
@@ -589,6 +600,17 @@ export const RARITY_CONFIGS: Record<
     chanceLabel: string;
   }
 > = {
+  GODLY: {
+    name: 'Tanrısal',
+    color: '#1e3a8a', // Lâcivert (Navy Blue)
+    textColor: 'text-indigo-300',
+    bgColor: 'bg-indigo-950/70',
+    borderColor: 'border-blue-700/80',
+    borderActive: 'border-blue-500',
+    glow: 'shadow-[0_0_35px_rgba(30,58,138,0.7)]',
+    badgeBg: 'bg-gradient-to-r from-blue-950 via-indigo-950 to-blue-900 text-blue-200 border border-blue-500/60 shadow-indigo-950/60 font-black',
+    chanceLabel: '%000,1',
+  },
   MYTHIC: {
     name: 'Mitolojik',
     color: '#ef4444', // Kırmızı

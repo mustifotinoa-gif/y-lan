@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Zap, ShoppingBag, Smartphone, Monitor, Keyboard, MousePointer, Hourglass, Lock } from 'lucide-react';
+import { Zap, ShoppingBag, Smartphone, Monitor, Keyboard, MousePointer, Hourglass, Lock, Crosshair } from 'lucide-react';
 
 interface VirtualControlsProps {
   onSteerAngle: (angle: number) => void;
@@ -12,6 +12,9 @@ interface VirtualControlsProps {
   timeFreezeCooldownMs?: number;
   isMultiplayer?: boolean;
   onActivateTimeFreeze?: () => void;
+  hasGodlyTeleport?: boolean;
+  teleportCharges?: number;
+  onActivateTeleport?: () => void;
   isTurboUnlocked?: boolean;
 }
 
@@ -26,6 +29,9 @@ export const VirtualDPad: React.FC<VirtualControlsProps> = ({
   timeFreezeCooldownMs = 0,
   isMultiplayer = false,
   onActivateTimeFreeze,
+  hasGodlyTeleport = false,
+  teleportCharges = 0,
+  onActivateTeleport,
   isTurboUnlocked = false,
 }) => {
   const joystickRef = useRef<HTMLDivElement | null>(null);
@@ -238,6 +244,28 @@ export const VirtualDPad: React.FC<VirtualControlsProps> = ({
                     : timeFreezeCharges > 0
                     ? 'DONDUR (G)'
                     : 'MARKET'}
+                </span>
+              </button>
+            )}
+
+            {/* Tanrısal Işınlanma Mobile Button (Lâcivert) */}
+            {(hasGodlyTeleport || teleportCharges > 0) && onActivateTeleport && (
+              <button
+                onClick={() => {
+                  triggerHaptic();
+                  onActivateTeleport();
+                }}
+                disabled={teleportCharges <= 0}
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer ${
+                  teleportCharges > 0
+                    ? 'bg-gradient-to-br from-blue-950 via-indigo-950 to-blue-900 border-2 border-blue-500 text-cyan-200 shadow-[0_0_12px_rgba(30,58,138,0.7)]'
+                    : 'bg-slate-900/60 border border-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+                }`}
+                title={`Tanrısal Işınlanma (${teleportCharges}/2)`}
+              >
+                <Crosshair className={`w-4 h-4 mb-0.5 ${teleportCharges > 0 ? 'text-cyan-300 animate-pulse' : 'text-slate-500'}`} />
+                <span className="text-[7.5px] font-mono font-black">
+                  {teleportCharges > 0 ? `IŞINLAN (${teleportCharges})` : 'BİTTİ'}
                 </span>
               </button>
             )}

@@ -18,6 +18,7 @@ import {
   Lock,
   Music,
   Bug,
+  Crosshair,
 } from 'lucide-react';
 import { POWER_UP_CONFIG } from '../constants/gameConfig';
 import { ActivePowerUp, LiveStandingItem } from '../types/game';
@@ -48,6 +49,9 @@ interface HUDProps {
   timeFreezeCooldownMs?: number;
   isMultiplayer?: boolean;
   onActivateTimeFreeze?: () => void;
+  hasGodlyTeleport?: boolean;
+  teleportCharges?: number;
+  onActivateTeleport?: () => void;
   isTurboUnlocked?: boolean;
   onTogglePause: () => void;
   onToggleMute: () => void;
@@ -83,6 +87,9 @@ export const HUD: React.FC<HUDProps> = ({
   timeFreezeCooldownMs = 0,
   isMultiplayer = false,
   onActivateTimeFreeze,
+  hasGodlyTeleport = false,
+  teleportCharges = 0,
+  onActivateTeleport,
   isTurboUnlocked = false,
   onTogglePause,
   onToggleMute,
@@ -217,6 +224,23 @@ export const HUD: React.FC<HUDProps> = ({
               ) : (
                 <span className="text-[11px]">MARKET</span>
               )}
+            </button>
+          )}
+
+          {/* Tanrısal Işınlanma Butonu (2 Hak, Lâcivert - Navy Blue) */}
+          {(hasGodlyTeleport || teleportCharges > 0) && onActivateTeleport && (
+            <button
+              onClick={onActivateTeleport}
+              title={`Tanrısal Işınlanma [X] · Kalan Hak: ${teleportCharges}/2`}
+              disabled={teleportCharges <= 0}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-black transition-all active:scale-95 cursor-pointer ${
+                teleportCharges > 0
+                  ? 'bg-gradient-to-r from-blue-950 via-indigo-950 to-blue-900 text-cyan-200 border border-blue-500/80 shadow-[0_0_12px_rgba(30,58,138,0.7)] hover:border-cyan-400'
+                  : 'bg-slate-800/60 text-slate-500 border border-slate-700/60 cursor-not-allowed opacity-60'
+              }`}
+            >
+              <Crosshair className={`w-3.5 h-3.5 ${teleportCharges > 0 ? 'text-cyan-300 animate-pulse' : 'text-slate-500'}`} />
+              <span className="text-[11px] font-bold">[X] {teleportCharges > 0 ? `IŞINLAN (${teleportCharges})` : 'TÜKENDİ'}</span>
             </button>
           )}
 

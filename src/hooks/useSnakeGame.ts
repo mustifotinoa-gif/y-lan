@@ -37,7 +37,10 @@ import {
   GameMode,
   CloneSnake,
   MarketPowerId,
+  MarketRarity,
   PlaytimeRewardId,
+  SummonCrateType,
+  SummonResultItem,
 } from '../types/game';
 import {
   MARKET_POWERS,
@@ -214,6 +217,25 @@ export function useSnakeGame() {
     }
   });
 
+  // Godly Teleport (500.000 Coin or 000,1% drop, 2x Teleport anywhere on map + 2s invulnerability)
+  const [hasGodlyTeleport, setHasGodlyTeleport] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cybersnake_item_godly_teleport') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [teleportCharges, setTeleportCharges] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('cybersnake_teleport_charges');
+      if (saved !== null) return parseInt(saved, 10);
+      return localStorage.getItem('cybersnake_item_godly_teleport') === 'true' ? 2 : 0;
+    } catch {
+      return 0;
+    }
+  });
+
   // 10-Minute Market Rotation Timer & Active Powers
   const [rotationTimeLeftMs, setRotationTimeLeftMs] = useState<number>(() => {
     const epoch = Math.floor(Date.now() / MARKET_ROTATION_INTERVAL_MS);
@@ -231,6 +253,7 @@ export function useSnakeGame() {
     } catch {}
     // Seed with starter powers or previously purchased powers
     const initial: MarketPowerId[] = ['MEGA_LAHMACUN', 'MAGNET_VORTEX'];
+    if (localStorage.getItem('cybersnake_item_godly_teleport') === 'true' && !initial.includes('GODLY_TELEPORT')) initial.push('GODLY_TELEPORT');
     if (localStorage.getItem('cybersnake_item_mythic_cloning') === 'true' && !initial.includes('MYTHIC_CLONING')) initial.push('MYTHIC_CLONING');
     if (localStorage.getItem('cybersnake_item_mythic_hearts') === 'true' && !initial.includes('MYTHIC_HEARTS')) initial.push('MYTHIC_HEARTS');
     if ((parseInt(localStorage.getItem('cybersnake_time_freeze_charges') || '0', 10)) > 0 && !initial.includes('TIME_FREEZE')) initial.push('TIME_FREEZE');
@@ -249,10 +272,11 @@ export function useSnakeGame() {
       }
     } catch {}
     const defaultSlots: MarketPowerId[] = ['MEGA_LAHMACUN', 'MAGNET_VORTEX'];
-    if (localStorage.getItem('cybersnake_item_mythic_cloning') === 'true' && defaultSlots.length < 5) defaultSlots.push('MYTHIC_CLONING');
+    if (localStorage.getItem('cybersnake_item_godly_teleport') === 'true' && defaultSlots.length < 5) defaultSlots.push('GODLY_TELEPORT');
+    if (localStorage.getItem('cybersnake_item_mythic_cloning') === 'true' && defaultSlots.length < 5 && !defaultSlots.includes('MYTHIC_CLONING')) defaultSlots.push('MYTHIC_CLONING');
     if (localStorage.getItem('cybersnake_item_mythic_hearts') === 'true' && defaultSlots.length < 5 && !defaultSlots.includes('MYTHIC_HEARTS')) defaultSlots.push('MYTHIC_HEARTS');
-    if ((parseInt(localStorage.getItem('cybersnake_time_freeze_charges') || '0', 10)) > 0 && defaultSlots.length < 5) defaultSlots.push('TIME_FREEZE');
-    if (localStorage.getItem('cybersnake_item_legendary_turbo') === 'true' && defaultSlots.length < 5) defaultSlots.push('SUPER_TURBO');
+    if ((parseInt(localStorage.getItem('cybersnake_time_freeze_charges') || '0', 10)) > 0 && defaultSlots.length < 5 && !defaultSlots.includes('TIME_FREEZE')) defaultSlots.push('TIME_FREEZE');
+    if (localStorage.getItem('cybersnake_item_legendary_turbo') === 'true' && defaultSlots.length < 5 && !defaultSlots.includes('SUPER_TURBO')) defaultSlots.push('SUPER_TURBO');
     return defaultSlots.slice(0, 5);
   });
 
@@ -657,9 +681,307 @@ export function useSnakeGame() {
         return true;
       }
 
+      if (itemId === 'GODLY_TELEPORT') {
+        if (hasGodlyTeleport && teleportCharges >= 2) {
+          addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '⚠️ Zaten 2 Tanrısal Işınlanma hakkınız var!', '#1e3a8a');
+          return false;
+        }
+        if (coins < 500000) return false;
+        updateCoins(-500000);
+        sound.playPowerUp();
+        setHasGodlyTeleport(true);
+        setTeleportCharges(2);
+        setInventory((prev) => (prev.includes('GODLY_TELEPORT') ? prev : [...prev, 'GODLY_TELEPORT']));
+        setActiveLoadout((prev) => (prev.includes('GODLY_TELEPORT') || prev.length >= 5 ? prev : [...prev, 'GODLY_TELEPORT']));
+        try {
+          localStorage.setItem('cybersnake_item_godly_teleport', 'true');
+          localStorage.setItem('cybersnake_teleport_charges', '2');
+        } catch {}
+        addEngineFloatingText(engineRef.current.playerX, engineRef.current.playerY - 30, '🌌 TANRISAL IŞINLANMA ALINDI! (2 Hak)', '#38bdf8');
+        return true;
+      }
+
       return false;
     },
-    [coins, hasCloning, hasMythicHearts, hasLegendaryTurbo, hasMegaLahmacun, hasMagnetVortex, hasCyberShield, updateCoins, buyTimeFreeze, addEngineFloatingText]
+    [coins, hasCloning, hasMythicHearts, hasLegendaryTurbo, hasMegaLahmacun, hasMagnetVortex, hasCyberShield, hasGodlyTeleport, teleportCharges, updateCoins, buyTimeFreeze, addEngineFloatingText]
+  );
+
+  // Tanrısal Işınlanma (Godly Teleport - 2 Hak, Lâcivert Aura, 2s Hasar Almazlık, Multiplayer Sync)
+  const activateTeleport = useCallback((targetX?: number, targetY?: number): boolean => {
+    if (!activeLoadoutRef.current.includes('GODLY_TELEPORT') && !hasGodlyTeleport) {
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        '⚠️ Tanrısal Işınlanma kuşanılı değil veya henüz çıkarılmadı!',
+        '#1e3a8a'
+      );
+      return false;
+    }
+
+    if (teleportCharges <= 0) {
+      addEngineFloatingText(
+        engineRef.current.playerX,
+        engineRef.current.playerY - 30,
+        '⚠️ Işınlanma hakkınız tükendi! (2/2 kullanıldı)',
+        '#f59e0b'
+      );
+      return false;
+    }
+
+    const eng = engineRef.current;
+    const center = ARENA_SIZE / 2;
+
+    let destX = targetX;
+    let destY = targetY;
+
+    if (destX === undefined || destY === undefined) {
+      // Warp 450 units forward in current heading direction
+      const angle = eng.playerAngle;
+      destX = eng.playerX + Math.cos(angle) * 450;
+      destY = eng.playerY + Math.sin(angle) * 450;
+    }
+
+    // Clamp within arena boundaries
+    const distFromCenter = Math.hypot(destX - center, destY - center);
+    const maxSafeR = ARENA_RADIUS - 100;
+    if (distFromCenter > maxSafeR) {
+      const angle = Math.atan2(destY - center, destX - center);
+      destX = center + Math.cos(angle) * maxSafeR;
+      destY = center + Math.sin(angle) * maxSafeR;
+    }
+
+    // 1. Origin particle burst (Lâcivert + Cyan)
+    addEngineParticles(eng.playerX, eng.playerY, '#1e3a8a', 45);
+    addEngineParticles(eng.playerX, eng.playerY, '#38bdf8', 25);
+    sound.playPowerUp();
+
+    // 2. Reposition player
+    eng.playerX = destX;
+    eng.playerY = destY;
+
+    // 3. Smoothly align body segments behind head
+    const angle = eng.playerAngle;
+    for (let i = 0; i < eng.playerBody.length; i++) {
+      eng.playerBody[i] = {
+        x: destX - Math.cos(angle) * (i + 1) * SEGMENT_SPACING,
+        y: destY - Math.sin(angle) * (i + 1) * SEGMENT_SPACING,
+      };
+    }
+
+    // 4. Destination celestial particle burst
+    addEngineParticles(destX, destY, '#1e3a8a', 50);
+    addEngineParticles(destX, destY, '#60a5fa', 30);
+
+    // 5. Grant 2 seconds invulnerability
+    eng.isInvulnerable = true;
+    eng.invulnerableUntil = Date.now() + 2000;
+    setIsInvulnerable(true);
+
+    // 6. Decrement charges
+    const nextCharges = Math.max(0, teleportCharges - 1);
+    setTeleportCharges(nextCharges);
+    try {
+      localStorage.setItem('cybersnake_teleport_charges', String(nextCharges));
+    } catch {}
+
+    addEngineFloatingText(
+      destX,
+      destY - 40,
+      `🌌 TANRISAL IŞINLANMA! (Kalan: ${nextCharges})`,
+      '#38bdf8'
+    );
+
+    // 7. Multiplayer sync
+    if (gameMode === 'MULTIPLAYER') {
+      multiplayer.sendUpdate({
+        x: destX,
+        y: destY,
+        angle: eng.playerAngle,
+        score: eng.score,
+        length: eng.playerLength,
+        body: eng.playerBody,
+        isBoosting: eng.isBoosting,
+        isAlive: true,
+      });
+    }
+
+    return true;
+  }, [hasGodlyTeleport, teleportCharges, addEngineParticles, addEngineFloatingText, gameMode]);
+
+  // Skibidi Tower Defense Summon Unit Engine (1x = 100 Coin, 10x = 900 Coin, Mythic Kutu & Standart Kutu)
+  const summonCrate = useCallback(
+    (crateType: SummonCrateType, count: 1 | 10): SummonResultItem[] | null => {
+      const cost = count === 1 ? 100 : 900;
+      if (coins < cost) {
+        addEngineFloatingText(
+          engineRef.current.playerX,
+          engineRef.current.playerY - 30,
+          `⚠️ Yetersiz Coin! (${cost} Coin gerekli)`,
+          '#f59e0b'
+        );
+        return null;
+      }
+
+      updateCoins(-cost);
+      sound.playPowerUp();
+
+      const results: SummonResultItem[] = [];
+
+      for (let i = 0; i < count; i++) {
+        const rand = Math.random();
+        let pulledPowerId: MarketPowerId | null = null;
+        let rarity: MarketRarity = 'COMMON';
+        let name = '';
+        let description = '';
+        let compensationCoins = 0;
+
+        if (crateType === 'MYTHIC_CRATE') {
+          // Mythic Kutu Oranları (User requested: mythic ve godlynin şansı 00,2 000,2 olsun):
+          // Godly (%000,2) = 0.0002
+          // Mythic (%00,2) = 0.002
+          // Legendary = 0.01
+          // Epic = 0.40
+          // Rare = 0.30
+          // Common = Kalan
+          if (rand < 0.0002) {
+            pulledPowerId = 'GODLY_TELEPORT';
+            rarity = 'GODLY';
+          } else if (rand < 0.0022) {
+            pulledPowerId = Math.random() < 0.5 ? 'MYTHIC_HEARTS' : 'MYTHIC_CLONING';
+            rarity = 'MYTHIC';
+          } else if (rand < 0.0122) {
+            pulledPowerId = Math.random() < 0.5 ? 'TIME_FREEZE' : 'SUPER_TURBO';
+            rarity = 'LEGENDARY';
+          } else if (rand < 0.4122) {
+            pulledPowerId = 'MEGA_LAHMACUN';
+            rarity = 'EPIC';
+          } else if (rand < 0.7122) {
+            pulledPowerId = Math.random() < 0.5 ? 'MAGNET_VORTEX' : 'CYBER_SHIELD';
+            rarity = 'RARE';
+          } else {
+            rarity = 'COMMON';
+          }
+        } else {
+          // Standart Kutu Oranları (User requested: godly 000,1, mythic 00,1, efsanevi 0.1, epik 30, nadir 34.9, yaygın 35):
+          if (rand < 0.0001) {
+            pulledPowerId = 'GODLY_TELEPORT';
+            rarity = 'GODLY';
+          } else if (rand < 0.0011) {
+            pulledPowerId = Math.random() < 0.5 ? 'MYTHIC_CLONING' : 'MYTHIC_HEARTS';
+            rarity = 'MYTHIC';
+          } else if (rand < 0.0111) {
+            pulledPowerId = Math.random() < 0.5 ? 'TIME_FREEZE' : 'SUPER_TURBO';
+            rarity = 'LEGENDARY';
+          } else if (rand < 0.3111) {
+            pulledPowerId = 'MEGA_LAHMACUN';
+            rarity = 'EPIC';
+          } else if (rand < 0.6601) {
+            pulledPowerId = Math.random() < 0.5 ? 'MAGNET_VORTEX' : 'CYBER_SHIELD';
+            rarity = 'RARE';
+          } else {
+            rarity = 'COMMON';
+          }
+        }
+
+        if (pulledPowerId) {
+          const cfg = MARKET_POWERS[pulledPowerId];
+          name = cfg.name;
+          description = cfg.description;
+          const isOwned = inventory.includes(pulledPowerId);
+
+          if (!isOwned) {
+            // Add new power to infinite inventory
+            setInventory((prev) => (prev.includes(pulledPowerId!) ? prev : [...prev, pulledPowerId!]));
+            setActiveLoadout((prev) => (prev.includes(pulledPowerId!) || prev.length >= 5 ? prev : [...prev, pulledPowerId!]));
+
+            if (pulledPowerId === 'GODLY_TELEPORT') {
+              setHasGodlyTeleport(true);
+              setTeleportCharges(2);
+              try {
+                localStorage.setItem('cybersnake_item_godly_teleport', 'true');
+                localStorage.setItem('cybersnake_teleport_charges', '2');
+              } catch {}
+            } else if (pulledPowerId === 'MYTHIC_HEARTS') {
+              setHasMythicHearts(true);
+              engineRef.current.lives = 10.0;
+              setLives(10.0);
+              try { localStorage.setItem('cybersnake_item_mythic_hearts', 'true'); } catch {}
+            } else if (pulledPowerId === 'MYTHIC_CLONING') {
+              setHasCloning(true);
+              try { localStorage.setItem('cybersnake_item_mythic_cloning', 'true'); } catch {}
+            } else if (pulledPowerId === 'TIME_FREEZE') {
+              setTimeFreezeCharges((prev) => prev + 1);
+            } else if (pulledPowerId === 'SUPER_TURBO') {
+              setHasLegendaryTurbo(true);
+              try { localStorage.setItem('cybersnake_item_legendary_turbo', 'true'); } catch {}
+            } else if (pulledPowerId === 'MEGA_LAHMACUN') {
+              setHasMegaLahmacun(true);
+              try { localStorage.setItem('cybersnake_item_mega_lahmacun', 'true'); } catch {}
+            } else if (pulledPowerId === 'MAGNET_VORTEX') {
+              setHasMagnetVortex(true);
+              try { localStorage.setItem('cybersnake_item_magnet_vortex', 'true'); } catch {}
+            } else if (pulledPowerId === 'CYBER_SHIELD') {
+              setHasCyberShield(true);
+              try { localStorage.setItem('cybersnake_item_cyber_shield', 'true'); } catch {}
+            }
+
+            results.push({
+              id: `pull-${Date.now()}-${i}-${Math.random()}`,
+              powerId: pulledPowerId,
+              name,
+              rarity,
+              isNew: true,
+              description,
+            });
+          } else {
+            // Already owned -> give bonus compensation coins or extra charges!
+            if (pulledPowerId === 'GODLY_TELEPORT') {
+              setTeleportCharges((prev) => Math.min(4, prev + 2));
+              compensationCoins = 5000;
+              updateCoins(compensationCoins);
+            } else if (pulledPowerId === 'TIME_FREEZE') {
+              setTimeFreezeCharges((prev) => prev + 1);
+              compensationCoins = 250;
+              updateCoins(compensationCoins);
+            } else if (pulledPowerId === 'MYTHIC_HEARTS' || pulledPowerId === 'MYTHIC_CLONING') {
+              compensationCoins = 2000;
+              updateCoins(compensationCoins);
+            } else if (pulledPowerId === 'SUPER_TURBO') {
+              compensationCoins = 500;
+              updateCoins(compensationCoins);
+            } else {
+              compensationCoins = 150;
+              updateCoins(compensationCoins);
+            }
+
+            results.push({
+              id: `pull-${Date.now()}-${i}-${Math.random()}`,
+              powerId: pulledPowerId,
+              name,
+              rarity,
+              isNew: false,
+              compensationCoins,
+              description: `Zaten sahipsiniz! +${compensationCoins} Coin telafisi verildi.`,
+            });
+          }
+        } else {
+          // Common Drop
+          const coinReward = 60 + Math.floor(Math.random() * 90);
+          updateCoins(coinReward);
+          results.push({
+            id: `pull-${Date.now()}-${i}-${Math.random()}`,
+            name: `Siber Coin Paketi (+${coinReward} Coin)`,
+            rarity: 'COMMON',
+            isNew: true,
+            compensationCoins: coinReward,
+            description: `Kasanıza anında +${coinReward} Coin eklendi!`,
+          });
+        }
+      }
+
+      return results;
+    },
+    [coins, inventory, updateCoins]
   );
 
   // Claim a Playtime Milestone Reward (Dakikalık Hediye Alma)
@@ -2240,6 +2562,13 @@ export function useSnakeGame() {
         return;
       }
 
+      if (e.key === 'x' || e.key === 'X') {
+        if (gameState === 'PLAYING') {
+          activateTeleport();
+        }
+        return;
+      }
+
       if (gameState !== 'PLAYING') return;
 
       // WASD / Arrow directional heading
@@ -2266,7 +2595,7 @@ export function useSnakeGame() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, restartGame, setBoosting, activateTimeFreeze]);
+  }, [gameState, restartGame, setBoosting, activateTimeFreeze, activateTeleport]);
 
   // 10-minute market rotation countdown effect
   useEffect(() => {
@@ -2345,6 +2674,10 @@ export function useSnakeGame() {
     buyUpgrade,
     buyTimeFreeze,
     activateTimeFreeze,
+    hasGodlyTeleport,
+    teleportCharges,
+    activateTeleport,
+    summonCrate,
     buySkin,
     equipSkin,
     hasMegaLahmacun,

@@ -17,6 +17,7 @@ import {
   ChevronUp,
   ChevronDown,
   Heart,
+  Crosshair,
 } from 'lucide-react';
 import { MarketPowerId, MarketRarity } from '../types/game';
 import { MARKET_POWERS, RARITY_CONFIGS } from '../constants/gameConfig';
@@ -29,6 +30,8 @@ interface CornerInventoryProps {
   onToggleEquipPower: (id: MarketPowerId) => boolean;
   onOpenShop?: () => void;
   onActivateTimeFreeze?: () => boolean;
+  onActivateTeleport?: () => boolean;
+  teleportCharges?: number;
   isMultiplayer?: boolean;
 }
 
@@ -40,6 +43,8 @@ export const CornerInventory: React.FC<CornerInventoryProps> = ({
   onToggleEquipPower,
   onOpenShop,
   onActivateTimeFreeze,
+  onActivateTeleport,
+  teleportCharges = 0,
   isMultiplayer = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,6 +54,8 @@ export const CornerInventory: React.FC<CornerInventoryProps> = ({
   // Helper to render appropriate icon per power
   const renderPowerIcon = (id: MarketPowerId, className = 'w-4 h-4') => {
     switch (id) {
+      case 'GODLY_TELEPORT':
+        return <Crosshair className={`${className} text-cyan-300 animate-pulse`} />;
       case 'MYTHIC_CLONING':
         return <Users className={`${className} text-red-400`} />;
       case 'MYTHIC_HEARTS':
@@ -117,7 +124,9 @@ export const CornerInventory: React.FC<CornerInventoryProps> = ({
                     <button
                       key={idx}
                       onClick={() => {
-                        if (powerId === 'TIME_FREEZE' && onActivateTimeFreeze && !isMultiplayer) {
+                        if (powerId === 'GODLY_TELEPORT' && onActivateTeleport) {
+                          onActivateTeleport();
+                        } else if (powerId === 'TIME_FREEZE' && onActivateTimeFreeze && !isMultiplayer) {
                           onActivateTimeFreeze();
                         } else {
                           setIsOpen(true);

@@ -181,7 +181,7 @@ export interface LiveStandingItem {
 
 export type GameMode = 'SOLO' | 'MULTIPLAYER';
 
-export type MarketRarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC';
+export type MarketRarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC' | 'GODLY';
 
 export type MarketPowerId =
   | 'TIME_FREEZE'
@@ -190,7 +190,10 @@ export type MarketPowerId =
   | 'MAGNET_VORTEX'
   | 'CYBER_SHIELD'
   | 'MYTHIC_CLONING'
-  | 'MYTHIC_HEARTS';
+  | 'MYTHIC_HEARTS'
+  | 'GODLY_TELEPORT';
+
+export type SummonCrateType = 'STANDARD' | 'MYTHIC_CRATE';
 
 export interface MarketPowerConfig {
   id: MarketPowerId;
@@ -215,12 +218,12 @@ export interface CloneSnake {
   offsetDist: number;
 }
 
-export const MAX_ACTIVE_LOADOUT_SLOTS = 5;
-
-export interface InventoryState {
-  items: MarketPowerId[];
-  activeLoadout: MarketPowerId[]; // Up to 5 equipped powers
+export interface SummonResultItem {
+  id: string;
+  powerId?: MarketPowerId;
+  name: string;
+  rarity: MarketRarity;
+  isNew: boolean;
+  compensationCoins?: number;
+  description: string;
 }
-
-
-

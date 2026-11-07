@@ -73,6 +73,10 @@ export default function App() {
     buyUpgrade,
     buyTimeFreeze,
     activateTimeFreeze,
+    hasGodlyTeleport,
+    teleportCharges,
+    activateTeleport,
+    summonCrate,
     buySkin,
     equipSkin,
     hasMegaLahmacun,
@@ -468,6 +472,9 @@ export default function App() {
               timeFreezeCooldownMs={timeFreezeCooldownMs}
               isMultiplayer={gameMode === 'MULTIPLAYER'}
               onActivateTimeFreeze={activateTimeFreeze}
+              hasGodlyTeleport={hasGodlyTeleport}
+              teleportCharges={teleportCharges}
+              onActivateTeleport={activateTeleport}
               isTurboUnlocked={isTurboUnlocked}
               onTogglePause={togglePause}
               onToggleMute={toggleMute}
@@ -508,7 +515,7 @@ export default function App() {
               )}
             </div>
 
-            {/* Mobile Touch Virtual Controls (360° Joystick + Turbo Sprint + Time Freeze) */}
+            {/* Mobile Touch Virtual Controls (360° Joystick + Turbo Sprint + Time Freeze + Teleport) */}
             <VirtualDPad
               onSteerAngle={setSteerAngle}
               onBoostStart={() => setBoosting(true)}
@@ -520,6 +527,9 @@ export default function App() {
               timeFreezeCooldownMs={timeFreezeCooldownMs}
               isMultiplayer={gameMode === 'MULTIPLAYER'}
               onActivateTimeFreeze={activateTimeFreeze}
+              hasGodlyTeleport={hasGodlyTeleport}
+              teleportCharges={teleportCharges}
+              onActivateTeleport={activateTeleport}
               isTurboUnlocked={isTurboUnlocked}
             />
           </div>
@@ -534,7 +544,9 @@ export default function App() {
           <span>·</span>
           <span>U: Market</span>
           <span>·</span>
-          <span>G / T: Zaman Durdur (10s)</span>
+          <span>G: Zaman Durdur</span>
+          <span>·</span>
+          <span>X: Işınlan (2 Hak)</span>
           <span>·</span>
           <span className="text-emerald-400 font-mono">120 FPS</span>
         </div>
@@ -565,7 +577,7 @@ export default function App() {
         onResetScores={handleResetScores}
       />
 
-      {/* Siber Market & Mağaza Modal (Zaman Durdurma, Kalıcı Güçler, Kostümler) */}
+      {/* Siber Market & Mağaza Modal (Skibidi Summon, Kalıcı Güçler, Kostümler) */}
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
@@ -584,11 +596,14 @@ export default function App() {
         hasCloning={hasCloning}
         hasMythicHearts={hasMythicHearts}
         hasLegendaryTurbo={hasLegendaryTurbo}
+        hasGodlyTeleport={hasGodlyTeleport}
+        teleportCharges={teleportCharges}
         rotationTimeLeftMs={rotationTimeLeftMs}
         currentRotationCycle={currentRotationCycle}
         onBuyTacticalItem={buyTacticalItem}
         activeLoadout={activeLoadout}
         onToggleEquipPower={toggleEquipPower}
+        onSummonCrate={summonCrate}
       />
 
       {/* Küçük Köşe Envanteri (5 Aktif Güç Yuvası & Sonsuz Depolama) */}
@@ -600,6 +615,8 @@ export default function App() {
         onToggleEquipPower={toggleEquipPower}
         onOpenShop={() => setIsUpgradeModalOpen(true)}
         onActivateTimeFreeze={activateTimeFreeze}
+        onActivateTeleport={activateTeleport}
+        teleportCharges={teleportCharges}
         isMultiplayer={gameMode === 'MULTIPLAYER'}
       />
 
