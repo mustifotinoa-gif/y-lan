@@ -103,9 +103,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const cost1x = activeCrate === 'MYTHIC_CRATE' ? 900 : 100;
+  const cost10x = activeCrate === 'MYTHIC_CRATE' ? 8000 : 900;
+
   const handleSummon = (count: 1 | 10) => {
     if (!onSummonCrate) return;
-    const cost = count === 1 ? 100 : 900;
+    const cost = count === 1 ? cost1x : cost10x;
     if (coins < cost) return;
 
     setIsSummoning(true);
@@ -201,7 +204,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 hidden sm:block">
-                Skibidi Tower Defense summon sandıkları · 1 Kutu: 100 Coin, 10 Kutu: 900 Coin
+                Skibidi Tower Defense summon sandıkları · Standart: 100 / 900 Coin · Mitolojik: 900 / 8.000 Coin
               </p>
             </div>
           </div>
@@ -236,7 +239,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             <Compass className="w-4 h-4 text-blue-400 animate-spin" />
             <span>🎲 Skibidi Summon Alanı</span>
             <span className="px-1.5 py-0.2 rounded-full bg-blue-900/60 text-blue-200 text-[9px] font-mono border border-blue-500/40">
-              100 / 900 Coin
+              {activeCrate === 'MYTHIC_CRATE' ? '900 / 8.000 Coin' : '100 / 900 Coin'}
             </span>
           </button>
 
@@ -294,8 +297,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                         Şans Oranları (Drop Rates)
                       </h4>
                     </div>
-                    <span className="text-[10px] font-mono text-cyan-400">
-                      {activeCrate === 'STANDARD' ? 'Standart Kutu' : 'Mitolojik Kutu'}
+                    <span className="text-[10px] font-mono text-cyan-400 font-bold">
+                      {activeCrate === 'STANDARD' ? 'Standart (100/900)' : 'Mitolojik (900/8.000)'}
                     </span>
                   </div>
 
@@ -510,15 +513,15 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   </div>
                 </div>
 
-                {/* 1x ve 10x KUTU AÇMA BUTONLARI (Kullanıcının kesin isteği: 1 kez 100 coin, 10 kutu 900 coin) */}
+                {/* 1x ve 10x KUTU AÇMA BUTONLARI (Standart: 100/900, Mitolojik: 900/8.000 Coin) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800 relative z-10">
-                  {/* 1 Kutu Aç (100 Coin) */}
+                  {/* 1 Kutu Aç (Standart: 100 Coin, Mitolojik: 900 Coin) */}
                   <button
                     type="button"
-                    disabled={coins < 100 || isSummoning}
+                    disabled={coins < cost1x || isSummoning}
                     onClick={() => handleSummon(1)}
                     className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-95 ${
-                      coins >= 100 && !isSummoning
+                      coins >= cost1x && !isSummoning
                         ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-cyan-500/30 border border-cyan-400/60'
                         : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
                     }`}
@@ -526,28 +529,28 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                     <Sparkles className="w-4 h-4 text-cyan-200" />
                     <span>1 Kutu Aç</span>
                     <span className="font-mono bg-black/40 px-2 py-0.5 rounded-md text-amber-300 border border-amber-500/30">
-                      100 Coin
+                      {cost1x.toLocaleString('tr-TR')} Coin
                     </span>
                   </button>
 
-                  {/* 10 Kutu Aç (900 Coin - %10 İndirim!) */}
+                  {/* 10 Kutu Aç (Standart: 900 Coin, Mitolojik: 8.000 Coin) */}
                   <button
                     type="button"
-                    disabled={coins < 900 || isSummoning}
+                    disabled={coins < cost10x || isSummoning}
                     onClick={() => handleSummon(10)}
                     className={`relative py-3 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-95 ${
-                      coins >= 900 && !isSummoning
+                      coins >= cost10x && !isSummoning
                         ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-red-600 hover:from-amber-400 hover:to-red-500 text-white shadow-red-500/30 border border-amber-400/60 animate-pulse'
                         : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
                     }`}
                   >
                     <div className="absolute -top-2.5 right-3 px-2 py-0.2 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px] shadow-sm uppercase tracking-wider">
-                      %10 İNDİRİM!
+                      {activeCrate === 'MYTHIC_CRATE' ? '1.000 COİN TASARRUF!' : '%10 İNDİRİM!'}
                     </div>
                     <Flame className="w-4 h-4 text-amber-200" />
                     <span>10 Kutu Aç</span>
                     <span className="font-mono bg-black/40 px-2 py-0.5 rounded-md text-amber-300 border border-amber-500/30">
-                      900 Coin
+                      {cost10x.toLocaleString('tr-TR')} Coin
                     </span>
                   </button>
                 </div>
@@ -623,19 +626,19 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      disabled={coins < 100}
+                      disabled={coins < cost1x}
                       onClick={() => handleSummon(1)}
                       className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
-                      Tekrar 1 Aç (100 Coin)
+                      Tekrar 1 Aç ({cost1x.toLocaleString('tr-TR')} Coin)
                     </button>
                     <button
                       type="button"
-                      disabled={coins < 900}
+                      disabled={coins < cost10x}
                       onClick={() => handleSummon(10)}
                       className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-red-600 text-white font-black text-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
-                      Tekrar 10 Aç (900 Coin)
+                      Tekrar 10 Aç ({cost10x.toLocaleString('tr-TR')} Coin)
                     </button>
                   </div>
 

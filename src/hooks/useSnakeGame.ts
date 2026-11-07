@@ -808,15 +808,24 @@ export function useSnakeGame() {
     return true;
   }, [hasGodlyTeleport, teleportCharges, addEngineParticles, addEngineFloatingText, gameMode]);
 
-  // Skibidi Tower Defense Summon Unit Engine (1x = 100 Coin, 10x = 900 Coin, Mythic Kutu & Standart Kutu)
+  // Skibidi Tower Defense Summon Unit Engine:
+  // Standart Kutu: 1x = 100 Coin, 10x = 900 Coin
+  // Mitolojik Kutu: 1x = 900 Coin, 10x = 8.000 Coin
   const summonCrate = useCallback(
     (crateType: SummonCrateType, count: 1 | 10): SummonResultItem[] | null => {
-      const cost = count === 1 ? 100 : 900;
+      const cost =
+        crateType === 'MYTHIC_CRATE'
+          ? count === 1
+            ? 900
+            : 8000
+          : count === 1
+          ? 100
+          : 900;
       if (coins < cost) {
         addEngineFloatingText(
           engineRef.current.playerX,
           engineRef.current.playerY - 30,
-          `⚠️ Yetersiz Coin! (${cost} Coin gerekli)`,
+          `⚠️ Yetersiz Coin! (${cost.toLocaleString('tr-TR')} Coin gerekli)`,
           '#f59e0b'
         );
         return null;
