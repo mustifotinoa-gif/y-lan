@@ -337,6 +337,76 @@ class SoundEngine {
       // Ignore
     }
   }
+
+  public playCrateCharging() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 1.2);
+
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.25);
+    } catch {
+      // Ignore
+    }
+  }
+
+  public playCrateBurst(isGodly: boolean = false, isMythic: boolean = false) {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      // Sub impact
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(170, now);
+      sub.frequency.exponentialRampToValueAtTime(32, now + 0.45);
+      subGain.gain.setValueAtTime(0.35, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.5);
+
+      // Chords for high-tier cyber reveal
+      const chord = isGodly
+        ? [523.25, 659.25, 783.99, 1046.5, 1318.51] // C Major celestial
+        : isMythic
+        ? [440, 554.37, 659.25, 880] // A Major mythic
+        : [330, 440, 554.37, 660];
+
+      chord.forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + 0.05 + idx * 0.04);
+        gain.gain.setValueAtTime(0.18, now + 0.05 + idx * 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05 + idx * 0.04 + 0.55);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now + 0.05 + idx * 0.04);
+        osc.stop(now + 0.05 + idx * 0.04 + 0.55);
+      });
+    } catch {
+      // Ignore
+    }
+  }
 }
 
 export const sound = new SoundEngine();

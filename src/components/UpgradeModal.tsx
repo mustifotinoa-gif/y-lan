@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   X,
   Heart,
@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { UpgradeLevels, SnakeSkinId, MarketPowerId, SummonCrateType, SummonResultItem, MarketRarity } from '../types/game';
 import { SNAKE_SKINS, MARKET_POWERS, RARITY_CONFIGS } from '../constants/gameConfig';
+import { CyberCrateAnimation } from './CyberCrateAnimation';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -87,10 +88,30 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const [activeTab, setActiveTab] = useState<MarketTab>('summon');
   const [activeCrate, setActiveCrate] = useState<SummonCrateType>('STANDARD');
   const [bannerViewMode, setBannerViewMode] = useState<'banner' | 'all'>('banner');
-  const [isSummoning, setIsSummoning] = useState(false);
+  const [isCrateOpening, setIsCrateOpening] = useState(false);
+  const [openingCount, setOpeningCount] = useState<1 | 10>(1);
+  const [pendingResults, setPendingResults] = useState<SummonResultItem[] | null>(null);
   const [summonResults, setSummonResults] = useState<SummonResultItem[] | null>(null);
 
-  if (!isOpen) return null;
+  const handleCompleteCrateAnimation = useCallback(() => {
+    setIsCrateOpening(false);
+    setPendingResults((current) => {
+      if (current && current.length > 0) {
+        setSummonResults(current);
+      }
+      return null;
+    });
+  }, []);
+
+  const handleSkipCrateAnimation = useCallback(() => {
+    setIsCrateOpening(false);
+    setPendingResults((current) => {
+      if (current && current.length > 0) {
+        setSummonResults(current);
+      }
+      return null;
+    });
+  }, []);
 
   const isRotationCycleB = (currentRotationCycle || 0) % 2 === 1;
 
@@ -111,14 +132,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
     const cost = count === 1 ? cost1x : cost10x;
     if (coins < cost) return;
 
-    setIsSummoning(true);
-    setTimeout(() => {
-      const results = onSummonCrate(activeCrate, count);
-      setIsSummoning(false);
-      if (results && results.length > 0) {
-        setSummonResults(results);
-      }
-    }, 450);
+    // Secure the roll and items from engine
+    const results = onSummonCrate(activeCrate, count);
+    if (results && results.length > 0) {
+      setPendingResults(results);
+      setOpeningCount(count);
+      setSummonResults(null);
+      setIsCrateOpening(true);
+    }
   };
 
   const UPGRADE_DATA = [
@@ -184,6 +205,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   ];
 
   const skinList = Object.values(SNAKE_SKINS);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fade-in select-none">
@@ -518,10 +541,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   {/* 1 Kutu Aç (Standart: 100 Coin, Mitolojik: 900 Coin) */}
                   <button
                     type="button"
-                    disabled={coins < cost1x || isSummoning}
+                    disabled={coins < cost1x || isCrateOpening}
                     onClick={() => handleSummon(1)}
                     className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-95 ${
-                      coins >= cost1x && !isSummoning
+                      coins >= cost1x && !isCrateOpening
                         ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-cyan-500/30 border border-cyan-400/60'
                         : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
                     }`}
@@ -536,10 +559,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   {/* 10 Kutu Aç (Standart: 900 Coin, Mitolojik: 8.000 Coin) */}
                   <button
                     type="button"
-                    disabled={coins < cost10x || isSummoning}
+                    disabled={coins < cost10x || isCrateOpening}
                     onClick={() => handleSummon(10)}
                     className={`relative py-3 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-95 ${
-                      coins >= cost10x && !isSummoning
+                      coins >= cost10x && !isCrateOpening
                         ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-red-600 hover:from-amber-400 hover:to-red-500 text-white shadow-red-500/30 border border-amber-400/60 animate-pulse'
                         : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
                     }`}
@@ -557,6 +580,18 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* ========================================================================= */}
+          {/* SİBERPUNK NEON SANDIK AÇILIŞ ANİMASYONU (MİTOLOJİK & STANDART)            */}
+          {/* ========================================================================= */}
+          <CyberCrateAnimation
+            isOpen={isCrateOpening}
+            crateType={activeCrate}
+            count={openingCount}
+            results={pendingResults || []}
+            onComplete={handleCompleteCrateAnimation}
+            onSkip={handleSkipCrateAnimation}
+          />
 
           {/* ========================================================================= */}
           {/* SUMMON SONUÇLARI REVEAL MODALI                                            */}
